@@ -1,0 +1,16 @@
+.idea
+*~
+\#*
+gsdr_export.h
+cmake-build-*
+CMakeCache.txt
+CMakeFiles
+cmake_install.cmake
+*.a
+*.so
+*.dll
+*.dylib
+Testing
+build.ninja
+Makefile
+install_manifest.txt
