@@ -16,10 +16,11 @@
 #ifndef GPUSDR_CONVERSION_H
 #define GPUSDR_CONVERSION_H
 
-#include <gsdr/cuda_util.h>
-#include <gsdr/gsdr_export.h>
-#include <gsdr/util.h>
 #include <stdint.h>
+
+#include "cuda_util.h"
+#include "gsdr_export.h"
+#include "util.h"
 
 /**
  * Converts int8_t values to float values in the range -1 <= output value <= 1

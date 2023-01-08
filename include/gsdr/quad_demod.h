@@ -17,10 +17,11 @@
 #define GPUSDR_QUAD_DEMOD_H
 
 #include <cuComplex.h>
-#include <gsdr/gsdr_export.h>
-#include <gsdr/util.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "gsdr_export.h"
+#include "util.h"
 
 /**
  * The number of elements in input must be at least numOutputElements + 1.

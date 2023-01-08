@@ -18,9 +18,10 @@
 
 #include <cuComplex.h>
 #include <cuda_runtime.h>
-#include <gsdr/gsdr_export.h>
-#include <gsdr/util.h>
 #include <stdint.h>
+
+#include "gsdr_export.h"
+#include "util.h"
 
 /**
  * Runs the FIR filter for the given taps, and returns the number of elements written to output.

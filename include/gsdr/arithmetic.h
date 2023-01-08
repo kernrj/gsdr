@@ -18,10 +18,11 @@
 
 #include <cuComplex.h>
 #include <cuda_runtime.h>
-#include <gsdr/gsdr_export.h>
-#include <gsdr/util.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "gsdr_export.h"
+#include "util.h"
 
 GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrAddConstFF(
     const float* input,
