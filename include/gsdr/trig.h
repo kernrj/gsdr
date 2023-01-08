@@ -23,7 +23,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-C_LINKAGE GSDR_PUBLIC cudaError_t gsdrCosineC(
+GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrCosineC(
     float phiBegin,
     float phiEnd,
     cuComplex* output,

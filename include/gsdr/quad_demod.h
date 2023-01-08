@@ -18,6 +18,7 @@
 
 #include <cuComplex.h>
 #include <gsdr/gsdr_export.h>
+#include <gsdr/util.h>
 #include <stddef.h>
 #include <stdint.h>
 

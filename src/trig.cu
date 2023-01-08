@@ -29,7 +29,7 @@ __global__ void k_ComplexCosine(float indexToRadiansMultiplier, float phi, cuCom
   values[x] = result;
 }
 
-C_LINKAGE cudaError_t gsdrCosineC(
+GSDR_C_LINKAGE cudaError_t gsdrCosineC(
     float phiBegin,
     float phiEnd,
     cuComplex* output,

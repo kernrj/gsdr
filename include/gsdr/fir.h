@@ -19,6 +19,7 @@
 #include <cuComplex.h>
 #include <cuda_runtime.h>
 #include <gsdr/gsdr_export.h>
+#include <gsdr/util.h>
 #include <stdint.h>
 
 /**

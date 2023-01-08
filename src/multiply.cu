@@ -39,7 +39,7 @@ static cudaError_t multiplyGeneric(
   SIMPLE_CUDA_FNC_END("k_Multiply()");
 }
 
-C_LINKAGE cudaError_t gsdrMultiplyCC(
+GSDR_C_LINKAGE cudaError_t gsdrMultiplyCC(
     const cuComplex* in1,
     const cuComplex* in2,
     cuComplex* out,
@@ -49,7 +49,7 @@ C_LINKAGE cudaError_t gsdrMultiplyCC(
   return multiplyGeneric(in1, in2, out, numElements, cudaDevice, cudaStream);
 }
 
-C_LINKAGE cudaError_t gsdrMultiplyFF(
+GSDR_C_LINKAGE cudaError_t gsdrMultiplyFF(
     const float* in1,
     const float* in2,
     float* out,
@@ -59,7 +59,7 @@ C_LINKAGE cudaError_t gsdrMultiplyFF(
   return multiplyGeneric(in1, in2, out, numElements, cudaDevice, cudaStream);
 }
 
-C_LINKAGE cudaError_t gsdrMultiplyCF(
+GSDR_C_LINKAGE cudaError_t gsdrMultiplyCF(
     const cuComplex* in1,
     const float* in2,
     cuComplex* out,

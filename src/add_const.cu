@@ -53,7 +53,7 @@ static cudaError_t addConstGeneric(
   SIMPLE_CUDA_FNC_END("k_AddConst()");
 }
 
-C_LINKAGE cudaError_t gsdrAddConstFF(
+GSDR_C_LINKAGE cudaError_t gsdrAddConstFF(
     const float* input,
     float addConst,
     float* output,
@@ -63,7 +63,7 @@ C_LINKAGE cudaError_t gsdrAddConstFF(
   return addConstGeneric(input, addConst, output, numElements, cudaDevice, cudaStream);
 }
 
-C_LINKAGE cudaError_t gsdrAddConstCC(
+GSDR_C_LINKAGE cudaError_t gsdrAddConstCC(
     const cuComplex* input,
     cuComplex addConst,
     cuComplex* output,
@@ -73,7 +73,7 @@ C_LINKAGE cudaError_t gsdrAddConstCC(
   return addConstGeneric(input, addConst, output, numElements, cudaDevice, cudaStream);
 }
 
-C_LINKAGE cudaError_t gsdrAddConstCF(
+GSDR_C_LINKAGE cudaError_t gsdrAddConstCF(
     const cuComplex* input,
     float addConst,
     cuComplex* output,
@@ -83,7 +83,7 @@ C_LINKAGE cudaError_t gsdrAddConstCF(
   return addConstGeneric(input, addConst, output, numElements, cudaDevice, cudaStream);
 }
 
-C_LINKAGE cudaError_t gsdrAddConstFC(
+GSDR_C_LINKAGE cudaError_t gsdrAddConstFC(
     const float* input,
     cuComplex addConst,
     cuComplex* output,
@@ -93,7 +93,7 @@ C_LINKAGE cudaError_t gsdrAddConstFC(
   return addConstGeneric(input, addConst, output, numElements, cudaDevice, cudaStream);
 }
 
-C_LINKAGE cudaError_t gsdrAddToMagnitude(
+GSDR_C_LINKAGE cudaError_t gsdrAddToMagnitude(
     const cuComplex* input,
     float addToMagnitude,
     cuComplex* output,

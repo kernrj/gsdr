@@ -17,9 +17,9 @@
 #define GSDR_INCLUDE_GSDR_UTIL_H_
 
 #ifdef __cplusplus
-#define C_LINKAGE extern "C"
+#define GSDR_C_LINKAGE extern "C"
 #else
-#define C_LINKAGE
+#define GSDR_C_LINKAGE
 #endif
 
 #endif  // GSDR_INCLUDE_GSDR_UTIL_H_

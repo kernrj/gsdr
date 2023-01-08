@@ -22,12 +22,6 @@
 #include <stdexcept>
 #include <string>
 
-#ifdef __cplusplus
-#define GSDR_C_LINKAGE extern "C"
-#else
-#define GSDR_C_LINKAGE
-#endif
-
 /*
  * CLion shows a syntax error at the '<<<>>>' when invoking a kernel because
  * it doesn't have a declaration for this function. The error is cosmetic

@@ -35,14 +35,14 @@ __global__ void k_Abs(const float* in, float* out, size_t numElements) {
   out[x] = fabsf(in[x]);
 }
 
-C_LINKAGE cudaError_t
+GSDR_C_LINKAGE cudaError_t
 gsdrMagnitude(const cuComplex* in, float* out, size_t numElements, int32_t cudaDevice, cudaStream_t cudaStream) {
   SIMPLE_CUDA_FNC_START("k_Magnitude()");
   k_Magnitude<<<blocks, threads, 0, cudaStream>>>(in, out, numElements);
   SIMPLE_CUDA_FNC_END("k_Magnitude()");
 }
 
-C_LINKAGE cudaError_t
+GSDR_C_LINKAGE cudaError_t
 gsdrAbs(const float* in, float* out, size_t numElements, int32_t cudaDevice, cudaStream_t cudaStream) {
   SIMPLE_CUDA_FNC_START("k_Abs()");
   k_Abs<<<blocks, threads, 0, cudaStream>>>(in, out, numElements);
