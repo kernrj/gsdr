@@ -15,7 +15,6 @@
 
 #include <cuComplex.h>
 #include <cuda_runtime_api.h>
-#include <remez/remez.h>
 
 #include "cuComplexOperatorOverloads.cuh"
 #include "gsdr/cuda_util.h"

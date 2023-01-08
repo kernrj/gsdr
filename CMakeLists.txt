@@ -15,15 +15,6 @@ if (NOT DEFINED CMAKE_CUDA_STANDARD)
     set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 endif ()
 
-include(FetchContent)
-FetchContent_Declare(
-        remez
-        GIT_REPOSITORY https://github.com/kernrj/remez-exchange.git
-        GIT_TAG master
-)
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(remez)
-
 set(GSDR_HEADER_DIR "${PROJECT_SOURCE_DIR}/include")
 
 FILE(GLOB headers "${GSDR_HEADER_DIR}/gsdr/*")
@@ -54,9 +45,7 @@ target_link_directories(
         /lib/x86_64-linux-gnu/
 )
 
-target_link_libraries(gsdr remez)
-
-target_include_directories( gsdr PRIVATE "${GSDR_HEADER_DIR}" )
+target_include_directories( gsdr BEFORE PRIVATE "${GSDR_HEADER_DIR}" )
 target_include_directories( gsdr INTERFACE "$<INSTALL_INTERFACE:include>" )
 
 set_target_properties(gsdr PROPERTIES CUDA_ARCHITECTURES "75")
