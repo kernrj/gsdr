@@ -47,17 +47,13 @@ target_include_directories(gsdr
     /usr/local/cuda/include
     )
 
-set_target_properties(gsdr PROPERTIES
-    CUDA_SEPARABLE_COMPILATION ON)
+set_target_properties(gsdr PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
-target_link_directories(
-    gsdr SYSTEM BEFORE PRIVATE ${FETCHCONTENT_SOURCE_DIR_REMEZ}
-)
-
-target_link_libraries(gsdr remez)
-
+target_include_directories(gsdr SYSTEM BEFORE PRIVATE ${FETCHCONTENT_SOURCE_DIR_REMEZ})
 target_include_directories(gsdr BEFORE PRIVATE "${GSDR_HEADER_DIR}")
 target_include_directories(gsdr INTERFACE "$<INSTALL_INTERFACE:include>")
+
+target_link_libraries(gsdr remez)
 
 set_target_properties(gsdr PROPERTIES CUDA_ARCHITECTURES "75")
 
