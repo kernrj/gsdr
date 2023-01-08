@@ -87,7 +87,7 @@ GSDR_C_LINKAGE size_t gsdrKaiserWindowLength(float dbAttenuation, float transiti
   return windowLength;
 }
 
-GSDR_C_LINKAGE cudaError_t gsdrFirCFC(
+GSDR_C_LINKAGE cudaError_t gsdrFirFC(
     size_t decimation,
     const float* taps,
     size_t tapCount,
@@ -97,22 +97,22 @@ GSDR_C_LINKAGE cudaError_t gsdrFirCFC(
     int32_t cudaDevice,
     cudaStream_t cudaStream) {
   const size_t numElements = numOutputs;
-  SIMPLE_CUDA_FNC_START("FIR CFC");
+  SIMPLE_CUDA_FNC_START("FIR FC")
 
   if (decimation == 1) {
-    CHECK_CUDA_RET("Before k_Fir()");
+    CHECK_CUDA_RET("Before k_Fir() FC");
     k_Fir<<<blocks, threads, 0, cudaStream>>>(input, taps, tapCount, output, numOutputs);
-    CHECK_CUDA_RET("After k_Fir()");
+    CHECK_CUDA_RET("After k_Fir() FC");
   } else {
-    CHECK_CUDA_RET("Before k_FirDecimate()");
+    CHECK_CUDA_RET("Before k_FirDecimate() FC");
     k_FirDecimate<<<blocks, threads, 0, cudaStream>>>(input, taps, tapCount, decimation, output, numOutputs);
-    CHECK_CUDA_RET("After k_FirDecimate()");
+    CHECK_CUDA_RET("After k_FirDecimate() FC");
   }
 
-  SIMPLE_CUDA_FNC_END("FIR CFC");
+  SIMPLE_CUDA_FNC_END("FIR FC")
 }
 
-GSDR_C_LINKAGE cudaError_t gsdrFirFFF(
+GSDR_C_LINKAGE cudaError_t gsdrFirFF(
     size_t decimation,
     const float* taps,
     size_t tapCount,
@@ -122,22 +122,22 @@ GSDR_C_LINKAGE cudaError_t gsdrFirFFF(
     int32_t cudaDevice,
     cudaStream_t cudaStream) {
   const size_t numElements = numOutputs;
-  SIMPLE_CUDA_FNC_START("FIR FFF");
+  SIMPLE_CUDA_FNC_START("FIR FF")
 
   if (decimation == 1) {
-    CHECK_CUDA_RET("Before k_Fir()");
+    CHECK_CUDA_RET("Before k_Fir() FF");
     k_Fir<<<blocks, threads, 0, cudaStream>>>(input, taps, tapCount, output, numOutputs);
-    CHECK_CUDA_RET("After k_Fir()");
+    CHECK_CUDA_RET("After k_Fir() FF");
   } else {
-    CHECK_CUDA_RET("Before k_FirDecimate()");
+    CHECK_CUDA_RET("Before k_FirDecimate() FF");
     k_FirDecimate<<<blocks, threads, 0, cudaStream>>>(input, taps, tapCount, decimation, output, numOutputs);
-    CHECK_CUDA_RET("After k_FirDecimate()");
+    CHECK_CUDA_RET("After k_FirDecimate() FF");
   }
 
-  SIMPLE_CUDA_FNC_END("FIR FFF");
+  SIMPLE_CUDA_FNC_END("FIR FF")
 }
 
-GSDR_C_LINKAGE cudaError_t gsdrFirCCC(
+GSDR_C_LINKAGE cudaError_t gsdrFirCC(
     size_t decimation,
     const cuComplex* taps,
     size_t tapCount,
@@ -147,17 +147,17 @@ GSDR_C_LINKAGE cudaError_t gsdrFirCCC(
     int32_t cudaDevice,
     cudaStream_t cudaStream) {
   const size_t numElements = numOutputs;
-  SIMPLE_CUDA_FNC_START("FIR FFF");
+  SIMPLE_CUDA_FNC_START("FIR CC")
 
   if (decimation == 1) {
-    CHECK_CUDA_RET("Before k_Fir()");
+    CHECK_CUDA_RET("Before k_Fir() CC");
     k_Fir<<<blocks, threads, 0, cudaStream>>>(input, taps, tapCount, output, numOutputs);
-    CHECK_CUDA_RET("After k_Fir()");
+    CHECK_CUDA_RET("After k_Fir() CC");
   } else {
-    CHECK_CUDA_RET("Before k_FirDecimate()");
+    CHECK_CUDA_RET("Before k_FirDecimate() CC");
     k_FirDecimate<<<blocks, threads, 0, cudaStream>>>(input, taps, tapCount, decimation, output, numOutputs);
-    CHECK_CUDA_RET("After k_FirDecimate()");
+    CHECK_CUDA_RET("After k_FirDecimate() CC");
   }
 
-  SIMPLE_CUDA_FNC_END("FIR FFF");
+  SIMPLE_CUDA_FNC_END("FIR CC")
 }

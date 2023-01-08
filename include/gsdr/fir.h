@@ -27,7 +27,7 @@
  * input, output, and taps must all be in GPU memory.
  * @return
  */
-GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrFirCFC(
+GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrFirFC(
     size_t decimation,
     const float* taps,
     size_t tapCount,
@@ -37,7 +37,7 @@ GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrFirCFC(
     int32_t cudaDevice,
     cudaStream_t cudaStream);
 
-GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrFirFFF(
+GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrFirFF(
     size_t decimation,
     const float* taps,
     size_t tapCount,
@@ -47,7 +47,7 @@ GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrFirFFF(
     int32_t cudaDevice,
     cudaStream_t cudaStream);
 
-GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrFirCCC(
+GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrFirCC(
     size_t decimation,
     const cuComplex* taps,
     size_t tapCount,
