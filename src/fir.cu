@@ -72,21 +72,6 @@ __global__ void k_FirDecimate(
   }
 }
 
-/**
- * https://tomroelandts.com/articles/how-to-create-a-configurable-filter-using-a-kaiser-window
- *
- * @param dbAttenuation
- * @param transitionWidthNormalized
- * @return
- */
-GSDR_C_LINKAGE size_t gsdrKaiserWindowLength(float dbAttenuation, float transitionWidthNormalized) {
-  const size_t windowLength =
-      lrintf(ceilf((dbAttenuation - 8.0f) / (2.285f * 2.0f * M_PIf * transitionWidthNormalized) + 1))
-      | 1;  // | 1 to make it odd if even.
-
-  return windowLength;
-}
-
 GSDR_C_LINKAGE cudaError_t gsdrFirFC(
     size_t decimation,
     const float* taps,

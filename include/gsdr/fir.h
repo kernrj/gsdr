@@ -57,24 +57,4 @@ GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrFirCC(
     int32_t cudaDevice,
     cudaStream_t cudaStream);
 
-/**
- * Generates FIR taps for a low-pass filter. The taps array must be in system memory (not GPU).
- */
-GSDR_C_LINKAGE GSDR_PUBLIC size_t gsdrGenerateLowPassTaps(
-    float sampleFrequency,
-    float cutoffFrequency,
-    float transitionWidth,
-    float dbAttenuation,
-    float* taps,
-    size_t tapsLength);
-
-/**
- * https://tomroelandts.com/articles/how-to-create-a-configurable-filter-using-a-kaiser-window
- *
- * @param dbAttenuation
- * @param transitionWidthNormalized
- * @return
- */
-GSDR_C_LINKAGE GSDR_PUBLIC size_t gsdrKaiserWindowLength(float dbAttenuation, float transitionWidthNormalized);
-
 #endif  // SDRTEST_SRC_FIR_H_
