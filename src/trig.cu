@@ -24,7 +24,9 @@ __global__ void k_ComplexCosine(float indexToRadiansMultiplier, float phi, cuCom
   const float theta = phi + __uint2float_rn(x) * indexToRadiansMultiplier;
 
   cuComplex result;
-  sincosf(theta, &result.x, &result.y);
+
+  // complex cosine(theta) = cos(theta) + i * sin(theta)
+  sincosf(theta, &result.y, &result.x);
 
   values[x] = result;
 }
