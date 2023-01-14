@@ -1,6 +1,19 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(gsdr)
+set(LIB_PROJECT_NAME gsdr)
+set(LIB_TARGET_NAME ${LIB_PROJECT_NAME})
+set(PROJECT_MACRO_PREFIX GSDR)
+
+set(
+    LIB_SOURCES
+    src/add_const.cu
+    src/conversion.cu
+    src/fir.cu
+    src/magnitude.cu
+    src/multiply.cu
+    src/quad_demod.cu
+    src/trig.cu
+)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -15,74 +28,86 @@ if (NOT DEFINED CMAKE_CUDA_STANDARD)
     set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 endif ()
 
-set(GSDR_HEADER_DIR "${PROJECT_SOURCE_DIR}/include")
+# Common
 
-FILE(GLOB headers "${GSDR_HEADER_DIR}/gsdr/*")
+project(${LIB_PROJECT_NAME})
 
-add_library(gsdr
-        ${headers}
-        src/add_const.cu
-        src/conversion.cu
-        src/fir.cu
-        src/magnitude.cu
-        src/multiply.cu
-        src/quad_demod.cu
-        src/trig.cu)
+set(LIB_DEV_PUBLIC_HEADER_DIR "${PROJECT_SOURCE_DIR}/include")
+file(GLOB_RECURSE HEADERS "${LIB_DEV_PUBLIC_HEADER_DIR}/${LIB_TARGET_NAME}" *.h)
 
-target_include_directories(gsdr
-        SYSTEM PRIVATE
-        /usr/include
-        /usr/local/include
-        /usr/local/cuda/include
+add_library(
+    ${LIB_TARGET_NAME}
+    ${HEADERS}
+    ${LIB_SOURCES}
 )
 
-set_target_properties(gsdr PROPERTIES
-        CUDA_SEPARABLE_COMPILATION ON)
+set(EXPORT_FILE "${PROJECT_BINARY_DIR}/${LIB_PROJECT_NAME}_export.h")
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
+message("EXPORT_FILE '${EXPORT_FILE}'")
+include(GenerateExportHeader)
+generate_export_header(
+    ${LIB_TARGET_NAME}
+    BASE_NAME ${PROJECT_MACRO_PREFIX}
+    EXPORT_MACRO_NAME ${PROJECT_MACRO_PREFIX}_PUBLIC
+    NO_EXPORT_MACRO_NAME ${PROJECT_MACRO_PREFIX}_PRIVATE
+    STATIC_DEFINE ${PROJECT_MACRO_PREFIX}_STATIC_BUILD
+    EXPORT_FILE_NAME ${EXPORT_FILE}
+)
+
+target_include_directories(${LIB_TARGET_NAME} INTERFACE "$<INSTALL_INTERFACE:include>")
+target_include_directories(${LIB_TARGET_NAME} BEFORE PRIVATE "${PROJECT_SOURCE_DIR}/include")
+
+if (WIN32)
+    install(
+        TARGETS ${LIB_TARGET_NAME}
+        EXPORT ${LIB_TARGET_NAME}
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION bin
+        ARCHIVE DESTINATION lib
+    )
+
+    install(FILES $<TARGET_PDB_FILE:${LIB_TARGET_NAME}> DESTINATION bin OPTIONAL)
+else ()
+    install(
+        TARGETS ${LIB_TARGET_NAME}
+        EXPORT ${LIB_TARGET_NAME}
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+    )
+endif ()
+
+install(DIRECTORY "${LIB_DEV_PUBLIC_HEADER_DIR}/${LIB_TARGET_NAME}" DESTINATION include/)
+install(FILES "${EXPORT_FILE}" DESTINATION include/)
+install(EXPORT "${LIB_TARGET_NAME}" DESTINATION "lib/cmake/${LIB_TARGET_NAME}" FILE "${LIB_TARGET_NAME}-config.cmake")
+
+option(USE_TESTS "Enable unit testing" ON)
+if (USE_TESTS AND IS_DIRECTORY "${PROJECT_SOURCE_DIR}/tests")
+    message("Tests enabled.")
+    enable_testing()
+    add_subdirectory(tests)
+endif ()
+
+# End of common section
+
+target_include_directories(
+    ${LIB_TARGET_NAME}
+    SYSTEM PRIVATE
+    /usr/include
+    /usr/local/include
+    /usr/local/cuda/include
+)
+
+set_target_properties(
+    ${LIB_TARGET_NAME}
+    PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+    CUDA_ARCHITECTURES "75"
+)
 
 target_link_directories(
-        gsdr SYSTEM PRIVATE
-        /usr/local/lib/x86_64-linux-gnu
-        /lib/x86_64-linux-gnu/
+    ${LIB_TARGET_NAME}
+    SYSTEM PRIVATE
+    /usr/local/lib/x86_64-linux-gnu
+    /lib/x86_64-linux-gnu/
 )
-
-target_include_directories( gsdr BEFORE PRIVATE "${GSDR_HEADER_DIR}" )
-target_include_directories( gsdr INTERFACE "$<INSTALL_INTERFACE:include>" )
-
-set_target_properties(gsdr PROPERTIES CUDA_ARCHITECTURES "75")
-
-include( GenerateExportHeader )
-
-set( EXPORT_FILE "${CMAKE_CURRENT_SOURCE_DIR}/include/gsdr/gsdr_export.h" )
-
-generate_export_header(
-        gsdr
-        BASE_NAME GSDR
-        EXPORT_MACRO_NAME GSDR_PUBLIC
-        NO_EXPORT_MACRO_NAME GSDR_PRIVATE
-        STATIC_DEFINE GSDR_STATIC_BUILD
-        EXPORT_FILE_NAME ${EXPORT_FILE}
-)
-
-if( WIN32 )
-    install(
-            TARGETS gsdr
-            EXPORT gsdr
-            RUNTIME DESTINATION bin
-            LIBRARY DESTINATION bin
-            ARCHIVE DESTINATION lib
-    )
-
-    install( FILES $<TARGET_PDB_FILE:gsdr> DESTINATION bin OPTIONAL )
-else()
-    install(
-            TARGETS gsdr
-            EXPORT gsdr
-            LIBRARY DESTINATION lib
-            ARCHIVE DESTINATION lib
-    )
-endif()
-
-FILE(GLOB PUBLIC_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/gsdr/*")
-
-install( FILES ${PUBLIC_HEADERS} DESTINATION include/gsdr )
-install( EXPORT gsdr DESTINATION lib/cmake/gsdr FILE gsdr-config.cmake )
