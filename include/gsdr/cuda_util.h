@@ -29,6 +29,7 @@
  */
 extern cudaError_t cudaConfigureCall(dim3 gridDim, dim3 blockDim, size_t sharedMem = 0, cudaStream_t stream = nullptr);
 
+#ifdef DEBUG
 #define CHECK_CUDA_RET(__cmdDescriptionCStr)                        \
   do {                                                              \
     cudaError_t __checkCudaRetStatus = cudaDeviceSynchronize();     \
@@ -51,6 +52,9 @@ extern cudaError_t cudaConfigureCall(dim3 gridDim, dim3 blockDim, size_t sharedM
       return __checkCudaRetStatus;                                  \
     }                                                               \
   } while (false)
+#else  // #ifdef DEBUG
+#define CHECK_CUDA_RET(__cmdDescriptionCStr) (void)0
+#endif  // #ifdef DEBUG
 
 #define SAFE_CUDA_RET(__cmd)                                       \
   do {                                                             \

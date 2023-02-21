@@ -45,7 +45,7 @@ GSDR_C_LINKAGE cudaError_t gsdrMultiplyCC(
     cuComplex* out,
     size_t numElements,
     int32_t cudaDevice,
-    cudaStream_t cudaStream) {
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT {
   return multiplyGeneric(in1, in2, out, numElements, cudaDevice, cudaStream);
 }
 
@@ -55,7 +55,7 @@ GSDR_C_LINKAGE cudaError_t gsdrMultiplyFF(
     float* out,
     size_t numElements,
     int32_t cudaDevice,
-    cudaStream_t cudaStream) {
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT {
   return multiplyGeneric(in1, in2, out, numElements, cudaDevice, cudaStream);
 }
 
@@ -65,6 +65,6 @@ GSDR_C_LINKAGE cudaError_t gsdrMultiplyCF(
     cuComplex* out,
     size_t numElements,
     int32_t cudaDevice,
-    cudaStream_t cudaStream) {
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT {
   return multiplyGeneric(in1, in2, out, numElements, cudaDevice, cudaStream);
 }

@@ -22,4 +22,10 @@
 #define GSDR_C_LINKAGE
 #endif
 
+#ifdef __cplusplus
+#define GSDR_NO_EXCEPT noexcept
+#else
+#define GSDR_NO_EXCEPT
+#endif
+
 #endif  // GSDR_INCLUDE_GSDR_UTIL_H_

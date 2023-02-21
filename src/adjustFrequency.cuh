@@ -13,7 +13,22 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef GPUSDR_IIR_H
-#define GPUSDR_IIR_H
+#ifndef GSDR_SRC_ADJUSTFREQUENCY_CUH_
+#define GSDR_SRC_ADJUSTFREQUENCY_CUH_
 
-#endif  // GPUSDR_IIR_H
+#include <cuComplex.h>
+
+#include <cstdint>
+
+/**
+ * @param firstSampleIndex May be % sampleRate. sampleIndex=0 and sampleIndex=sampleRate give the same output.
+ */
+__device__ cuComplex k_AdjustFrequency(
+    float frequencyShift,
+    uint32_t firstSampleIndex,
+    float sampleRate,
+    const cuComplex* __restrict__ input,
+    const float* __restrict__ lowPassTaps,
+    uint32_t numLowPassTaps);
+
+#endif  // GSDR_SRC_ADJUSTFREQUENCY_CUH_

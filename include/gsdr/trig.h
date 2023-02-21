@@ -29,6 +29,14 @@ GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrCosineC(
     cuComplex* output,
     size_t numElements,
     int32_t cudaDevice,
-    cudaStream_t cudaStream);
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT;
+
+GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrCosineF(
+    float phiBegin,
+    float phiEnd,
+    float* output,
+    size_t numElements,
+    int32_t cudaDevice,
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT;
 
 #endif  // GPUSDR_TRIG_H

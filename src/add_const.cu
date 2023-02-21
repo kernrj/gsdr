@@ -47,7 +47,7 @@ static cudaError_t addConstGeneric(
     OUT_T* output,
     size_t numElements,
     int32_t cudaDevice,
-    cudaStream_t cudaStream) {
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT {
   SIMPLE_CUDA_FNC_START("k_AddConst()");
   k_AddConst<IN1_T, CONST_T, OUT_T><<<blocks, threads, 0, cudaStream>>>(input, addConst, output, numElements);
   SIMPLE_CUDA_FNC_END("k_AddConst()");
@@ -59,7 +59,7 @@ GSDR_C_LINKAGE cudaError_t gsdrAddConstFF(
     float* output,
     size_t numElements,
     int32_t cudaDevice,
-    cudaStream_t cudaStream) {
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT {
   return addConstGeneric(input, addConst, output, numElements, cudaDevice, cudaStream);
 }
 
@@ -69,7 +69,7 @@ GSDR_C_LINKAGE cudaError_t gsdrAddConstCC(
     cuComplex* output,
     size_t numElements,
     int32_t cudaDevice,
-    cudaStream_t cudaStream) {
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT {
   return addConstGeneric(input, addConst, output, numElements, cudaDevice, cudaStream);
 }
 
@@ -79,7 +79,7 @@ GSDR_C_LINKAGE cudaError_t gsdrAddConstCF(
     cuComplex* output,
     size_t numElements,
     int32_t cudaDevice,
-    cudaStream_t cudaStream) {
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT {
   return addConstGeneric(input, addConst, output, numElements, cudaDevice, cudaStream);
 }
 
@@ -89,7 +89,7 @@ GSDR_C_LINKAGE cudaError_t gsdrAddConstFC(
     cuComplex* output,
     size_t numElements,
     int32_t cudaDevice,
-    cudaStream_t cudaStream) {
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT {
   return addConstGeneric(input, addConst, output, numElements, cudaDevice, cudaStream);
 }
 
@@ -99,7 +99,7 @@ GSDR_C_LINKAGE cudaError_t gsdrAddToMagnitude(
     cuComplex* output,
     size_t numElements,
     int32_t cudaDevice,
-    cudaStream_t cudaStream) {
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT {
   SIMPLE_CUDA_FNC_START("k_AddToMagnitude()");
   k_AddToMagnitude<<<blocks, threads, 0, cudaStream>>>(input, addToMagnitude, output, numElements);
   SIMPLE_CUDA_FNC_END("k_AddToMagnitude()");

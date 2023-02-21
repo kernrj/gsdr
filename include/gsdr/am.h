@@ -13,22 +13,27 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#include "cuComplexOperatorOverloads.cuh"
-#include "gsdr/conversion.h"
+#ifndef GSDR_INCLUDE_GSDR_AM_H_
+#define GSDR_INCLUDE_GSDR_AM_H_
 
-__global__ void k_int8ToFloat(const int8_t* input, float* output, size_t numElements) {
-  size_t x = blockIdx.x * blockDim.x + threadIdx.x;
-  if (x > numElements) {
-    return;
-  }
+#include <cuComplex.h>
+#include <cuda_runtime.h>
+#include <gsdr/gsdr_export.h>
+#include <gsdr/util.h>
+#include <stdint.h>
 
-  output[x] = max(-1.0f, static_cast<float>(input[x]) / 127.0f);
-}
+GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrAmDemod(
+    float rfSampleRate,
+    float centerFrequency,
+    float channelFrequency,
+    uint32_t decimation,
+    size_t firstSampleIndex,
+    const float* lowPassTaps,
+    size_t numLowPassTaps,
+    const cuComplex* input,
+    float* output,
+    size_t numElements,
+    int32_t cudaDevice,
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT;
 
-GSDR_C_LINKAGE cudaError_t
-gsdrInt8ToNormFloat(const int8_t* input, float* output, size_t numElements, int32_t cudaDevice, cudaStream_t cudaStream)
-    GSDR_NO_EXCEPT {
-  SIMPLE_CUDA_FNC_START("k_int8ToFloat()");
-  k_int8ToFloat<<<blocks, threads, 0, cudaStream>>>(input, output, numElements);
-  SIMPLE_CUDA_FNC_END("k_int8ToFloat()");
-}
+#endif  // GSDR_INCLUDE_GSDR_AM_H_

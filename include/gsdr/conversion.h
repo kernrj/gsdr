@@ -30,11 +30,8 @@
  * @param input
  * @param output
  */
-GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrInt8ToNormFloat(
-    const int8_t* input,
-    float* output,
-    size_t numElements,
-    int32_t cudaDevice,
-    cudaStream_t cudaStream);
+GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t
+gsdrInt8ToNormFloat(const int8_t* input, float* output, size_t numElements, int32_t cudaDevice, cudaStream_t cudaStream)
+    GSDR_NO_EXCEPT;
 
 #endif  // GPUSDR_CONVERSION_H

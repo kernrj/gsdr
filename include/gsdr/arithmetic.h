@@ -29,7 +29,7 @@ GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrAddConstFF(
     float* output,
     size_t numElements,
     int32_t cudaDevice,
-    cudaStream_t cudaStream);
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT;
 
 GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrAddConstCC(
     const cuComplex* input,
@@ -37,7 +37,7 @@ GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrAddConstCC(
     cuComplex* output,
     size_t numElements,
     int32_t cudaDevice,
-    cudaStream_t cudaStream);
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT;
 
 GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrAddConstCF(
     const cuComplex* input,
@@ -45,7 +45,7 @@ GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrAddConstCF(
     cuComplex* output,
     size_t numElements,
     int32_t cudaDevice,
-    cudaStream_t cudaStream);
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT;
 
 GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrAddConstFC(
     const float* input,
@@ -53,7 +53,7 @@ GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrAddConstFC(
     cuComplex* output,
     size_t numElements,
     int32_t cudaDevice,
-    cudaStream_t cudaStream);
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT;
 
 GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrMultiplyCC(
     const cuComplex* in1,
@@ -61,7 +61,7 @@ GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrMultiplyCC(
     cuComplex* out,
     size_t numElements,
     int32_t cudaDevice,
-    cudaStream_t cudaStream);
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT;
 
 GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrMultiplyFF(
     const float* in1,
@@ -69,7 +69,7 @@ GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrMultiplyFF(
     float* out,
     size_t numElements,
     int32_t cudaDevice,
-    cudaStream_t cudaStream);
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT;
 
 GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrMultiplyCF(
     const cuComplex* in1,
@@ -77,7 +77,7 @@ GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrMultiplyCF(
     cuComplex* out,
     size_t numElements,
     int32_t cudaDevice,
-    cudaStream_t cudaStream);
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT;
 
 GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrAddToMagnitude(
     const cuComplex* input,
@@ -85,12 +85,13 @@ GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrAddToMagnitude(
     cuComplex* output,
     size_t numElements,
     int32_t cudaDevice,
-    cudaStream_t cudaStream);
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT;
 
 GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t
-gsdrMagnitude(const cuComplex* in, float* out, size_t numElements, int32_t cudaDevice, cudaStream_t cudaStream);
+gsdrMagnitude(const cuComplex* in, float* out, size_t numElements, int32_t cudaDevice, cudaStream_t cudaStream)
+    GSDR_NO_EXCEPT;
 
 GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t
-gsdrAbs(const float* in, float* out, size_t numElements, int32_t cudaDevice, cudaStream_t cudaStream);
+gsdrAbs(const float* in, float* out, size_t numElements, int32_t cudaDevice, cudaStream_t cudaStream) GSDR_NO_EXCEPT;
 
 #endif  // GPUSDR_ARITHMETIC_H

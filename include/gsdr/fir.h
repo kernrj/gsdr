@@ -35,7 +35,7 @@ GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrFirFC(
     cuComplex* output,
     size_t numOutputs,
     int32_t cudaDevice,
-    cudaStream_t cudaStream);
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT;
 
 GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrFirFF(
     size_t decimation,
@@ -45,7 +45,7 @@ GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrFirFF(
     float* output,
     size_t numOutputs,
     int32_t cudaDevice,
-    cudaStream_t cudaStream);
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT;
 
 GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrFirCC(
     size_t decimation,
@@ -55,6 +55,16 @@ GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrFirCC(
     cuComplex* output,
     size_t numOutputs,
     int32_t cudaDevice,
-    cudaStream_t cudaStream);
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT;
+
+GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrFirCF(
+    size_t decimation,
+    const cuComplex* taps,
+    size_t tapCount,
+    const float* input,
+    cuComplex* output,
+    size_t numOutputs,
+    int32_t cudaDevice,
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT;
 
 #endif  // SDRTEST_SRC_FIR_H_

@@ -80,7 +80,7 @@ GSDR_C_LINKAGE cudaError_t gsdrFirFC(
     cuComplex* output,
     size_t numOutputs,
     int32_t cudaDevice,
-    cudaStream_t cudaStream) {
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT {
   const size_t numElements = numOutputs;
   SIMPLE_CUDA_FNC_START("FIR FC")
 
@@ -105,7 +105,7 @@ GSDR_C_LINKAGE cudaError_t gsdrFirFF(
     float* output,
     size_t numOutputs,
     int32_t cudaDevice,
-    cudaStream_t cudaStream) {
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT {
   const size_t numElements = numOutputs;
   SIMPLE_CUDA_FNC_START("FIR FF")
 
@@ -130,7 +130,7 @@ GSDR_C_LINKAGE cudaError_t gsdrFirCC(
     cuComplex* output,
     size_t numOutputs,
     int32_t cudaDevice,
-    cudaStream_t cudaStream) {
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT {
   const size_t numElements = numOutputs;
   SIMPLE_CUDA_FNC_START("FIR CC")
 
@@ -145,4 +145,29 @@ GSDR_C_LINKAGE cudaError_t gsdrFirCC(
   }
 
   SIMPLE_CUDA_FNC_END("FIR CC")
+}
+
+GSDR_C_LINKAGE cudaError_t gsdrFirCF(
+    size_t decimation,
+    const cuComplex* taps,
+    size_t tapCount,
+    const float* input,
+    cuComplex* output,
+    size_t numOutputs,
+    int32_t cudaDevice,
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT {
+  const size_t numElements = numOutputs;
+  SIMPLE_CUDA_FNC_START("FIR CF")
+
+  if (decimation == 1) {
+    CHECK_CUDA_RET("Before k_Fir() CF");
+    k_Fir<<<blocks, threads, 0, cudaStream>>>(input, taps, tapCount, output, numOutputs);
+    CHECK_CUDA_RET("After k_Fir() CF");
+  } else {
+    CHECK_CUDA_RET("Before k_FirDecimate() CF");
+    k_FirDecimate<<<blocks, threads, 0, cudaStream>>>(input, taps, tapCount, decimation, output, numOutputs);
+    CHECK_CUDA_RET("After k_FirDecimate() CF");
+  }
+
+  SIMPLE_CUDA_FNC_END("FIR CF")
 }

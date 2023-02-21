@@ -13,33 +13,39 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef GPUSDR_QUAD_DEMOD_H
-#define GPUSDR_QUAD_DEMOD_H
+#ifndef GSDR_INCLUDE_GSDR_FM_H_
+#define GSDR_INCLUDE_GSDR_FM_H_
 
 #include <cuComplex.h>
+#include <cuda_runtime.h>
 #include <gsdr/gsdr_export.h>
 #include <gsdr/util.h>
-#include <stddef.h>
 #include <stdint.h>
 
 /**
- * The number of elements in input must be at least numOutputElements + 1.
+ * Repeated calls to fmDemod requires an overlap of numLowPassTaps input values from the previous call.
  *
- * @param gain Set to channelFrequency / (2π * channelWidth)
+ * @param rfSampleRate The number of RF samples per second
+ * @param centerFrequency The tuning frequency the samples were captured at.
+ * @param channelFrequency The center frequency of the channel to demodulate
+ * @param channelWidth
+ * @param input Number of elements must be at least (numOutputs + 1) * decimation.
+ * @param output Must contain 'numOutputs' outputs.
  */
-GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrQuadFmDemod(
+GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrFmDemod(
+    float rfSampleRate,
+    float centerFrequency,
+    float channelFrequency,
+    float channelWidth,
+    float deviation,
+    uint32_t decimation,
+    size_t firstSampleIndex,
+    const float* lowPassTaps,
+    size_t numLowPassTaps,
     const cuComplex* input,
     float* output,
-    float gain,
-    size_t numOutputElements,
+    size_t numOutputs,
     int32_t cudaDevice,
     cudaStream_t cudaStream) GSDR_NO_EXCEPT;
 
-GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrQuadAmDemod(
-    const cuComplex* input,
-    float* output,
-    size_t numOutputElements,
-    int32_t cudaDevice,
-    cudaStream_t cudaStream) GSDR_NO_EXCEPT;
-
-#endif  // GPUSDR_QUAD_DEMOD_H
+#endif  // GSDR_INCLUDE_GSDR_FM_H_

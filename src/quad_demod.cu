@@ -19,11 +19,7 @@
 #include "gsdr/quad_demod.h"
 #include "gsdr/util.h"
 
-__global__ static void k_quadFrequencyDemod(
-    const cuComplex* input,
-    float* output,
-    float gain,
-    uint32_t numOutputElements) {
+__global__ static void k_quadFmDemod(const cuComplex* input, float* output, float gain, uint32_t numOutputElements) {
   uint32_t index = blockDim.x * blockIdx.x + threadIdx.x;
 
   if (index >= numOutputElements) {
@@ -31,7 +27,7 @@ __global__ static void k_quadFrequencyDemod(
   }
 
   const cuComplex m = input[index + 1] * cuConjf(input[index]);
-  const float outputValue = gain * atan2f(m.y, m.x);  // / 3.14159f * 180.0f;
+  const float outputValue = gain * atan2f(m.y, m.x);
   output[index] = outputValue;
 
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 200
@@ -39,14 +35,39 @@ __global__ static void k_quadFrequencyDemod(
 #endif
 }
 
-GSDR_C_LINKAGE cudaError_t gsdrQuadFrequencyDemod(
+__global__ static void k_quadAmDemod(const cuComplex* input, float* output, uint32_t numOutputElements) {
+  uint32_t index = blockDim.x * blockIdx.x + threadIdx.x;
+
+  if (index >= numOutputElements) {
+    return;
+  }
+
+  cuComplex val = input[index];
+  float magnitude = hypotf(val.x, val.y);
+  float outputValue = scalbnf(__saturatef(magnitude), 1) - 1.0f;
+  output[index] = outputValue;
+
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 200
+  // printf("index [%u] magnitude [%f] amplitude [%f]\n", index, magnitude, outputValue);
+#endif
+}
+
+GSDR_C_LINKAGE cudaError_t gsdrQuadFmDemod(
     const cuComplex* input,
     float* output,
     float gain,
     size_t numElements,
     int32_t cudaDevice,
-    cudaStream_t cudaStream) {
-  SIMPLE_CUDA_FNC_START("k_quadFrequencyDemod()");
-  k_quadFrequencyDemod<<<blocks, threads, 0, cudaStream>>>(input, output, gain, numElements);
-  SIMPLE_CUDA_FNC_END("k_quadFrequencyDemod()");
+    cudaStream_t cudaStream) GSDR_NO_EXCEPT {
+  SIMPLE_CUDA_FNC_START("k_quadFmDemod()")
+  k_quadFmDemod<<<blocks, threads, 0, cudaStream>>>(input, output, gain, numElements);
+  SIMPLE_CUDA_FNC_END("k_quadFmDemod()")
+}
+
+GSDR_C_LINKAGE cudaError_t
+gsdrQuadAmDemod(const cuComplex* input, float* output, size_t numElements, int32_t cudaDevice, cudaStream_t cudaStream)
+    GSDR_NO_EXCEPT {
+  SIMPLE_CUDA_FNC_START("k_quadAmDemod()")
+  k_quadAmDemod<<<blocks, threads, 0, cudaStream>>>(input, output, numElements);
+  SIMPLE_CUDA_FNC_END("k_quadAmDemod()")
 }

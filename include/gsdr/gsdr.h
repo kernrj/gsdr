@@ -16,11 +16,14 @@
 #ifndef GPUSDR_GSDR_H
 #define GPUSDR_GSDR_H
 
+#include <gsdr/am.h>
 #include <gsdr/arithmetic.h>
 #include <gsdr/conversion.h>
+#include <gsdr/cuda_util.h>
 #include <gsdr/fir.h>
-#include <gsdr/iir.h>
+#include <gsdr/fm.h>
 #include <gsdr/quad_demod.h>
 #include <gsdr/trig.h>
+#include <gsdr/util.h>
 
 #endif  // GPUSDR_GSDR_H

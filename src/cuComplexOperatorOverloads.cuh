@@ -87,7 +87,7 @@ __forceinline__ __host__ __device__ cuComplex zero<cuComplex>() {
   CHECK_CUDA_RET("Before " __fncName);
 
 #define SIMPLE_CUDA_FNC_END(__fncName)              \
-  CHECK_CUDA_RET("After k_int8ToFloat()");          \
+  CHECK_CUDA_RET("After " #__fncName);              \
   SAFE_CUDA_RET(cudaSetDevice(previousCudaDevice)); \
   return cudaSuccess;
 
