@@ -63,9 +63,6 @@ __global__ void k_FirDecimate(
 
   OUT_T& outputSample = output[outputIndex];
   const IN_T* inputSample = input + inputIndex;
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 200
-  // printf("outputIndex [%u] inputIndex [%u]\n", outputIndex, inputIndex);
-#endif
 
   outputSample = zero<OUT_T>();
   for (uint32_t i = 0; i < numTaps; i++, inputSample++) {
