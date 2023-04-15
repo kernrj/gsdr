@@ -24,7 +24,7 @@
 
 GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrAmDemod(
     float rfSampleRate,
-    float centerFrequency,
+    float tuningFrequency,
     float channelFrequency,
     uint32_t decimation,
     size_t firstSampleIndex,

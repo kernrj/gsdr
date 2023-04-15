@@ -26,18 +26,24 @@
  * Repeated calls to fmDemod requires an overlap of numLowPassTaps input values from the previous call.
  *
  * @param rfSampleRate The number of RF samples per second
- * @param centerFrequency The tuning frequency the samples were captured at.
+ * @param tuningFrequency The tuning frequency the samples were captured at.
  * @param channelFrequency The center frequency of the channel to demodulate
- * @param channelWidth
+ * @param frequencyDeviation The frequency deviation of the FM channel.
+ * @param decimation Reduce the number of output samples to 1 / (# input samples)
+ * @param firstSampleIndex The sample offset within [input].
+ * @param lowPassTaps FIR taps
+ * @param numLowPassTaps The number of elements in [lowPassTaps].
  * @param input Number of elements must be at least (numOutputs + 1) * decimation.
  * @param output Must contain 'numOutputs' outputs.
+ * @param numOutputs The number of elements to write to [output].
+ * @param cudaDevice The CUDA device index to run on.
+ * @param cudaStream The CUDA stream to use for processing.
  */
 GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrFmDemod(
     float rfSampleRate,
-    float centerFrequency,
+    float tuningFrequency,
     float channelFrequency,
-    float channelWidth,
-    float deviation,
+    float frequencyDeviation,
     uint32_t decimation,
     size_t firstSampleIndex,
     const float* lowPassTaps,

@@ -49,9 +49,9 @@ __global__ void k_Am(
   outputSample = __saturatef(hypotf(sample.x, sample.y)) * 2.0f - 1.0f;
 }
 
-cudaError_t gsdrAmDemod(
+GSDR_C_LINKAGE cudaError_t gsdrAmDemod(
     float rfSampleRate,
-    float centerFrequency,
+    float tuningFrequency,
     float channelFrequency,
     uint32_t decimation,
     size_t firstSampleIndex,
@@ -65,7 +65,7 @@ cudaError_t gsdrAmDemod(
   SIMPLE_CUDA_FNC_START("k_Am()")
 
   const auto firstSampleIndexUInt32 = (uint32_t)fmodf((float)firstSampleIndex, rfSampleRate);
-  const float cosineFrequency = centerFrequency - channelFrequency;
+  const float cosineFrequency = tuningFrequency - channelFrequency;
   k_Am<<<blocks, threads, 0, cudaStream>>>(
       input,
       lowPassTaps,

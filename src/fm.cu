@@ -178,11 +178,11 @@ __global__ void k_Fm4x(
   outputSample3 = gain3 * atan2f(c3.y, c3.x);
 }
 
-cudaError_t gsdrFmDemod(
+GSDR_C_LINKAGE cudaError_t gsdrFmDemod(
     float rfSampleRate,
-    float centerFrequency,
+    float tuningFrequency,
     float channelFrequency,
-    float channelWidth,
+    float frequencyDeviation,
     uint32_t decimation,
     size_t firstSampleIndex,
     const float* lowPassTaps,
@@ -200,8 +200,8 @@ cudaError_t gsdrFmDemod(
   SIMPLE_CUDA_FNC_START("k_Fm()")
 
   const auto firstSampleIndexUInt32 = (uint32_t)fmodf((float)firstSampleIndex, rfSampleRate);
-  const float quadFmDemodGain = rfSampleRate / (2.0f * M_PIf * channelWidth);
-  const float frequencyShift = centerFrequency - channelFrequency;
+  const float quadFmDemodGain = rfSampleRate / (2.0f * M_PIf * frequencyDeviation);
+  const float frequencyShift = tuningFrequency - channelFrequency;
   k_Fm<<<blocks, threads, 0, cudaStream>>>(
       input,
       lowPassTaps,
