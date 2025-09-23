@@ -24,6 +24,7 @@
 #include <gsdr/fm.h>
 #include <gsdr/qpsk.h>
 #include <gsdr/qpsk256.h>
+#include <gsdr/iir.h>
 #include <gsdr/quad_demod.h>
 #include <gsdr/trig.h>
 #include <gsdr/util.h>

@@ -13,6 +13,7 @@ set(
     src/conversion.cu
     src/fir.cu
     src/fm.cu
+    src/iir.cu
     src/magnitude.cu
     src/multiply.cu
     src/qpsk.cu
