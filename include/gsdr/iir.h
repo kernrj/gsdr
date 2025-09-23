@@ -52,6 +52,8 @@
  * - The inputHistory and outputHistory parameters are kept for API compatibility
  * - Maximum filter order is limited by available register/shared memory
  * - Performance is optimal for filter orders 2-8
+ * - Default configuration processes 8 samples per thread for optimal ILP
+ * - Shared memory usage is optimized to use only required space for coefficients
  */
 
 /**

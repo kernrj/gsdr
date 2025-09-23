@@ -105,6 +105,7 @@ y[n] = b0*x[n] + b1*x[n-1] + b2*x[n-2] + ... + bm*x[n-m] - a1*y[n-1] - a2*y[n-2]
 2. **Memory Alignment**: Ensure input/output arrays are properly aligned
 3. **Stream Usage**: Use multiple CUDA streams for concurrent processing
 4. **Occupancy**: Monitor GPU occupancy and adjust samplesPerThread accordingly
+5. **Configurable Constants**: The implementation uses well-defined constants for thread counts, grid limits, and shared memory limits, making it easier to tune for specific GPU architectures
 
 ## 💡 Complete Example: Second-Order Low-Pass Filter
 
@@ -253,3 +254,20 @@ int main() {
 | 6th order   | 5-10x faster        | 4                      |
 
 Performance improvements depend on GPU architecture, data size, and filter configuration.
+
+## ⚙️ Implementation Constants
+
+The optimized IIR implementation uses several well-defined constants that can be easily modified for different GPU architectures:
+
+### Key Constants:
+- `DEFAULT_THREADS_PER_BLOCK = 256`: Standard CUDA block size for good occupancy
+- `DEFAULT_SAMPLES_PER_THREAD = 8`: Default ILP exploitation level
+- `MAX_SAMPLES_PER_THREAD = 32`: Maximum samples per thread (hardware limit)
+- `CUDA_MAX_GRID_DIMENSION = 65535`: Maximum CUDA grid dimension
+- `MAX_SHARED_MEMORY_BYTES = 49152`: 48KB shared memory limit per SM
+
+### Benefits of Named Constants:
+1. **Easy Tuning**: Modify constants to optimize for specific GPU architectures
+2. **Maintainability**: Clear, self-documenting code
+3. **Portability**: Easy to adapt for different hardware constraints
+4. **Debugging**: Clear limits make it easier to identify performance bottlenecks

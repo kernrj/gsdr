@@ -23,6 +23,13 @@
 
 using namespace std;
 
+// Constants for performance tuning and limits
+static const uint32_t DEFAULT_THREADS_PER_BLOCK = 256;
+static const uint32_t DEFAULT_SAMPLES_PER_THREAD = 8;
+static const uint32_t MAX_SAMPLES_PER_THREAD = 32;
+static const uint32_t CUDA_MAX_GRID_DIMENSION = 65535;
+static const size_t MAX_SHARED_MEMORY_BYTES = 49152;  // 48KB per SM
+
 /**
  * OPTIMIZED IIR Filter Kernel with ILP and Shared Memory
  *
@@ -313,8 +320,8 @@ static cudaError_t iirGenericOptimized(
 
   // Calculate optimal configuration
   // Each thread processes multiple samples to exploit ILP
-  const uint32_t samplesPerThread = 8;  // Tune this value for optimal performance
-  const uint32_t threadsPerBlock = 256;  // Reasonable block size
+  const uint32_t samplesPerThread = DEFAULT_SAMPLES_PER_THREAD;  // Tune this value for optimal performance
+  const uint32_t threadsPerBlock = DEFAULT_THREADS_PER_BLOCK;  // Reasonable block size
 
   // Calculate grid dimensions
   uint32_t totalThreadWork = numElements;  // Total samples to process
@@ -322,7 +329,7 @@ static cudaError_t iirGenericOptimized(
   uint32_t numBlocks = (totalThreadsNeeded + threadsPerBlock - 1) / threadsPerBlock;
 
   // Ensure we don't exceed CUDA grid limits
-  if (numBlocks > 65535) {
+  if (numBlocks > CUDA_MAX_GRID_DIMENSION) {
     // Fallback: reduce samples per thread if we have too many blocks
     return cudaErrorInvalidValue;  // For now, let caller handle this
   }
@@ -332,7 +339,7 @@ static cudaError_t iirGenericOptimized(
   size_t sharedMemSize = 2 * coeffCount * sizeof(COEFF_T);
 
   // Ensure shared memory doesn't exceed reasonable limits (typically 48KB per SM)
-  if (sharedMemSize > 49152) {
+  if (sharedMemSize > MAX_SHARED_MEMORY_BYTES) {
     return cudaErrorInvalidValue;
   }
 
@@ -406,7 +413,11 @@ static cudaError_t iirGenericLegacy(
     return cudaErrorInvalidValue;
   }
 
+  // Set reasonable thread/block configuration for legacy kernel
   // WARNING: This kernel has race conditions!
+  const int threads = DEFAULT_THREADS_PER_BLOCK;
+  const int blocks = (numElements + threads - 1) / threads;
+
   k_IirLegacy<IN_T, OUT_T, COEFF_T><<<blocks, threads, 0, cudaStream>>>(
       bCoeffs, aCoeffs, coeffCount, inputHistory, outputHistory,
       input, output, numElements);
@@ -526,12 +537,12 @@ static cudaError_t iirGenericCustom(
   }
 
   // Validate samplesPerThread parameter
-  if (samplesPerThread == 0 || samplesPerThread > 32) {
+  if (samplesPerThread == 0 || samplesPerThread > MAX_SAMPLES_PER_THREAD) {
     return cudaErrorInvalidValue;  // Reasonable limits
   }
 
   // Calculate configuration
-  const uint32_t threadsPerBlock = 256;
+  const uint32_t threadsPerBlock = DEFAULT_THREADS_PER_BLOCK;
 
   // Calculate grid dimensions
   uint32_t totalThreadWork = numElements;
@@ -539,14 +550,14 @@ static cudaError_t iirGenericCustom(
   uint32_t numBlocks = (totalThreadsNeeded + threadsPerBlock - 1) / threadsPerBlock;
 
   // Ensure we don't exceed CUDA grid limits
-  if (numBlocks > 65535) {
+  if (numBlocks > CUDA_MAX_GRID_DIMENSION) {
     return cudaErrorInvalidValue;
   }
 
   // Calculate shared memory requirements
-  size_t sharedMemSize = 2 * MAX_COEFF_COUNT * sizeof(COEFF_T);
+  size_t sharedMemSize = 2 * coeffCount * sizeof(COEFF_T);
 
-  if (sharedMemSize > 49152) {
+  if (sharedMemSize > MAX_SHARED_MEMORY_BYTES) {
     return cudaErrorInvalidValue;
   }
 
