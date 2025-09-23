@@ -108,13 +108,13 @@ __global__ void k_IirOptimized(
   // Thread-private history arrays
   // These maintain the filter state for each thread independently
   // This eliminates race conditions that plagued the original implementation
-  IN_T inputHistory[MAX_COEFF_COUNT - 1];   // History for input values x[n-1], x[n-2], etc.
-  OUT_T outputHistory[MAX_COEFF_COUNT - 1];  // History for output values y[n-1], y[n-2], etc.
+  IN_T inputHistory[MAX_COEFF_COUNT];   // History for input values x[n-1], x[n-2], etc.
+  OUT_T outputHistory[MAX_COEFF_COUNT];  // History for output values y[n-1], y[n-2], etc.
 
   // Initialize history arrays to zero
   // This represents the state before processing begins (beginning of signal)
   #pragma unroll
-  for (uint32_t i = 0; i < MAX_COEFF_COUNT - 1; i++) {
+  for (uint32_t i = 0; i < MAX_COEFF_COUNT; i++) {
     inputHistory[i] = zero<IN_T>();
     outputHistory[i] = zero<OUT_T>();
   }
@@ -130,7 +130,8 @@ __global__ void k_IirOptimized(
     }
 
     // Calculate how many samples to process in this batch
-    uint32_t remainingSamples = min(4U, samplesPerThread - batchStart);
+    // Ensure we don't exceed array bounds
+    uint32_t remainingSamples = min(4U, min(samplesPerThread - batchStart, numElements - globalIdx));
 
     // Arrays to hold current batch of input samples and output results
     IN_T currentInputs[4];
@@ -299,7 +300,7 @@ static cudaError_t iirGenericOptimized(
 
   // Input validation
   if (coeffCount < 2) {
-    return cudaErrorInvalidValue;  // Need at least b0, b1, a1
+    return cudaErrorInvalidValue;  // Need at least 2 coefficients (e.g., b0 and b1, or b0 and a1 depending on filter structure)
   }
 
   if (coeffCount > MAX_COEFF_COUNT) {
@@ -328,9 +329,9 @@ static cudaError_t iirGenericOptimized(
 
   // Calculate shared memory requirements
   // We need space for both b and a coefficients
-  size_t sharedMemSize = 2 * MAX_COEFF_COUNT * sizeof(COEFF_T);
+  size_t sharedMemSize = 2 * coeffCount * sizeof(COEFF_T);
 
-  // Ensure shared memory doesn't exceed limits (typically 48KB per SM)
+  // Ensure shared memory doesn't exceed reasonable limits (typically 48KB per SM)
   if (sharedMemSize > 49152) {
     return cudaErrorInvalidValue;
   }
