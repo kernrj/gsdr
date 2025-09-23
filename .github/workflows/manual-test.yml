@@ -1,0 +1,135 @@
+name: Manual Test Run
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type (Debug/Release)'
+        required: false
+        default: 'Release'
+        type: choice
+        options:
+          - Release
+          - Debug
+      cuda_version:
+        description: 'CUDA version'
+        required: false
+        default: '11.8'
+        type: choice
+        options:
+          - '11.8'
+          - '12.0'
+      enable_coverage:
+        description: 'Enable test coverage'
+        required: false
+        default: false
+        type: boolean
+      run_extended_tests:
+        description: 'Run extended test suite (slower)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  BUILD_TYPE: ${{ inputs.build_type || 'Release' }}
+
+jobs:
+  manual-test:
+    name: Manual Test (${{ inputs.build_type || 'Release' }})
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup CUDA ${{ inputs.cuda_version || '11.8' }}
+      uses: Jimver/cuda-toolkit@v0.2.11
+      with:
+        cuda: '${{ inputs.cuda_version || '11.8' }}.0'
+        method: 'network'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          ninja-build \
+          libgtest-dev \
+          build-essential \
+          lcov
+
+    - name: Configure build
+      run: |
+        mkdir -p build
+        cd build
+
+        # Set CUDA architecture based on version
+        if [ "${{ inputs.cuda_version || '11.8' }}" = "12.0" ]; then
+          CUDA_ARCH="80"
+        else
+          CUDA_ARCH="75"
+        fi
+
+        cmake .. \
+          -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+          -DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCH} \
+          -DUSE_TESTS=ON \
+          -DENABLE_COVERAGE=${{ inputs.enable_coverage && 'ON' || 'OFF' }} \
+          -G Ninja
+
+    - name: Build project
+      run: |
+        cd build
+        ninja
+
+    - name: Run tests
+      run: |
+        cd build
+        echo "Running tests with configuration:"
+        echo "  Build Type: ${BUILD_TYPE}"
+        echo "  CUDA Version: ${{ inputs.cuda_version || '11.8' }}"
+        echo "  Coverage: ${{ inputs.enable_coverage && 'Enabled' || 'Disabled' }}"
+        echo "  Extended: ${{ inputs.run_extended_tests && 'Enabled' || 'Disabled' }}"
+
+        # Run basic tests
+        ctest --output-on-failure --build-config ${BUILD_TYPE}
+
+        # Run extended tests if requested
+        if [ "${{ inputs.run_extended_tests }}" = "true" ]; then
+          echo "Running extended tests..."
+          # Add extended test configurations here if needed
+          ctest --output-on-failure --build-config ${BUILD_TYPE} --rerun-failed
+        fi
+
+    - name: Generate coverage report
+      if: inputs.enable_coverage == true
+      run: |
+        cd build
+        echo "Generating coverage report..."
+        # This would require gcov/lcov setup for coverage reporting
+        # For now, just create a placeholder
+        echo "Coverage reporting would be implemented here" > coverage.txt
+
+    - name: Upload results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: manual-test-results-${{ inputs.build_type || 'Release' }}-cuda-${{ inputs.cuda_version || '11.8' }}
+        path: |
+          build/test_results.txt
+          build/coverage.txt
+        retention-days: 7
+
+    - name: Comment results
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        echo "## Manual Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Build Type | ${{ inputs.build_type || 'Release' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| CUDA Version | ${{ inputs.cuda_version || '11.8' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Coverage | ${{ inputs.enable_coverage && '✅ Enabled' || '❌ Disabled' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Extended Tests | ${{ inputs.run_extended_tests && '✅ Enabled' || '❌ Disabled' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Status: ✅ Tests completed successfully" >> $GITHUB_STEP_SUMMARY

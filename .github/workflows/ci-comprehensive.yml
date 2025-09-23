@@ -1,0 +1,274 @@
+name: CI Comprehensive
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    types: [ opened, synchronize, reopened, ready_for_review ]
+  push:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      cuda_version:
+        description: 'CUDA version to test against'
+        required: false
+        default: '11.8'
+        type: string
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  # Fast check for basic syntax and compilation
+  precheck:
+    name: Pre-check (Syntax & Headers)
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check code formatting
+      run: |
+        # Basic syntax check - ensure files are valid C++/CUDA
+        echo "Checking C++ files for basic syntax..."
+        find src/ include/ tests/ -name "*.cpp" -o -name "*.cu" -o -name "*.cuh" -o -name "*.h" | \
+        while read file; do
+          if [ -f "$file" ]; then
+            echo "Checking $file..."
+            # Try to parse with basic C++ compiler
+            head -50 "$file" > /tmp/test_snippet.cpp
+            if ! gcc -fsyntax-only -x c++ /tmp/test_snippet.cpp 2>/dev/null; then
+              echo "⚠️ Potential syntax issue in $file"
+            fi
+          fi
+        done
+
+    - name: Check for common issues
+      run: |
+        echo "Checking for common issues..."
+
+        # Check for TODO/FIXME comments in production code
+        if grep -r "TODO\|FIXME\|XXX" src/ include/ --include="*.cpp" --include="*.cu" --include="*.h" | grep -v "test_"; then
+          echo "⚠️ Found TODO/FIXME comments in production code:"
+          grep -r "TODO\|FIXME\|XXX" src/ include/ --include="*.cpp" --include="*.cu" --include="*.h" | grep -v "test_"
+        fi
+
+        # Check for long lines (>120 characters)
+        if find src/ include/ tests/ -name "*.cpp" -o -name "*.cu" -o -name "*.cuh" -o -name "*.h" | \
+           xargs awk 'length($0) > 120 { print FILENAME ":" NR ":" $0 }' | head -10; then
+          echo "⚠️ Found lines longer than 120 characters (showing first 10):"
+          find src/ include/ tests/ -name "*.cpp" -o -name "*.cu" -o -name "*.cuh" -o -name "*.h" | \
+            xargs awk 'length($0) > 120 { print FILENAME ":" NR ":" $0 }' | head -10
+        fi
+
+  # Main test job with CUDA
+  test-cuda:
+    name: Test (CUDA ${{ matrix.cuda-version }})
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        cuda-version: ['11.8', '12.0']
+        include:
+          - cuda-version: '11.8'
+            cuda-arch: '75'
+          - cuda-version: '12.0'
+            cuda-arch: '80'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up CUDA ${{ matrix.cuda-version }}
+      uses: Jimver/cuda-toolkit@v0.2.11
+      id: cuda-toolkit
+      with:
+        cuda: '${{ matrix.cuda-version }}.0'
+        method: 'network'
+        sub-packages: '["nvcc", "cuda-runtime", "cuda-toolkit"]'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          ninja-build \
+          libgtest-dev \
+          pkg-config \
+          build-essential \
+          wget \
+          curl
+
+    - name: Install GTest (if not available)
+      run: |
+        # Check if GTest is available
+        if ! pkg-config --exists gtest; then
+          echo "GTest not found via pkg-config, trying to build from source..."
+          cd /tmp
+          wget https://github.com/google/googletest/archive/release-1.11.0.tar.gz
+          tar -xzf release-1.11.0.tar.gz
+          cd googletest-release-1.11.0
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          sudo make install
+        fi
+
+    - name: Configure CMake
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. \
+          -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+          -DCMAKE_CUDA_ARCHITECTURES=${{ matrix.cuda-arch }} \
+          -DUSE_TESTS=ON \
+          -DENABLE_COVERAGE=ON \
+          -G Ninja \
+          -DCMAKE_CUDA_COMPILER=$(which nvcc)
+
+    - name: Build project
+      run: |
+        cd build
+        ninja -j$(nproc)
+
+    - name: List build artifacts
+      run: |
+        cd build
+        echo "Build artifacts:"
+        ls -la
+        find . -name "*.a" -o -name "*test*" | head -20
+
+    - name: Run tests
+      id: run-tests
+      run: |
+        cd build
+        echo "Running tests..."
+        ctest --output-on-failure --build-config ${BUILD_TYPE} --timeout 300
+
+    - name: Generate test report
+      if: always()
+      run: |
+        cd build
+        echo "Generating detailed test report..."
+        {
+          echo "=== GSDR Test Report ==="
+          echo "Date: $(date)"
+          echo "CUDA Version: ${{ matrix.cuda-version }}"
+          echo "CUDA Architecture: ${{ matrix.cuda-arch }}"
+          echo "Build Type: ${BUILD_TYPE}"
+          echo "Host: $(hostname)"
+          echo "CPU Cores: $(nproc)"
+          echo ""
+          echo "=== Test Results ==="
+          ctest --output-on-failure --build-config ${BUILD_TYPE} -V
+        } > test_report.txt 2>&1
+
+    - name: Upload test artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-cuda-${{ matrix.cuda-version }}
+        path: |
+          build/test_report.txt
+          build/Testing/
+        retention-days: 30
+
+    - name: Test summary
+      if: always()
+      run: |
+        if [ -f build/test_report.txt ]; then
+          echo "=== Test Summary ==="
+          if grep -q "Failed" build/test_report.txt; then
+            echo "❌ Some tests failed"
+            echo "Failed tests:"
+            grep -n "Failed\|ERROR" build/test_report.txt | head -10
+            exit 1
+          elif grep -q "Passed" build/test_report.txt; then
+            echo "✅ All tests passed!"
+          else
+            echo "⚠️ No clear test results found"
+            exit 1
+          fi
+        fi
+
+  # Documentation check
+  docs-check:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check for README files
+      run: |
+        echo "Checking for documentation..."
+        if [ ! -f README.md ] && [ ! -f README.rst ] && [ ! -f README.txt ]; then
+          echo "⚠️ No main README file found"
+        else
+          echo "✅ Main README found"
+        fi
+
+        # Check for component documentation
+        if [ -f README_QPSK.md ]; then
+          echo "✅ QPSK documentation found"
+        fi
+
+        if [ -f README_QPSK256.md ]; then
+          echo "✅ QPSK256 documentation found"
+        fi
+
+    - name: Basic documentation validation
+      run: |
+        echo "Validating documentation format..."
+        # Check if README files have reasonable content
+        for readme in README*.md; do
+          if [ -f "$readme" ]; then
+            lines=$(wc -l < "$readme")
+            if [ "$lines" -lt 10 ]; then
+              echo "⚠️ $readme seems very short ($lines lines)"
+            else
+              echo "✅ $readme has $lines lines"
+            fi
+          fi
+        done
+
+  # Final status check
+  status:
+    name: Final Status
+    runs-on: ubuntu-latest
+    needs: [precheck, test-cuda, docs-check]
+    if: always()
+    steps:
+    - name: Report overall status
+      run: |
+        echo "=== CI Pipeline Status ==="
+
+        # Check precheck status
+        if [ "${{ needs.precheck.result }}" = "success" ]; then
+          echo "✅ Pre-check passed"
+        else
+          echo "❌ Pre-check failed"
+        fi
+
+        # Check test status
+        if [ "${{ needs.test-cuda.result }}" = "success" ]; then
+          echo "✅ All tests passed"
+        else
+          echo "❌ Tests failed"
+        fi
+
+        # Check docs status
+        if [ "${{ needs.docs-check.result }}" = "success" ]; then
+          echo "✅ Documentation check passed"
+        else
+          echo "❌ Documentation check failed"
+        fi
+
+        echo ""
+        echo "=== Summary ==="
+        if [ "${{ needs.precheck.result }}" = "success" ] && \
+           [ "${{ needs.test-cuda.result }}" = "success" ] && \
+           [ "${{ needs.docs-check.result }}" = "success" ]; then
+          echo "🎉 All checks passed! Ready for merge."
+        else
+          echo "⚠️ Some checks failed. Please review."
+          exit 1
+        fi
