@@ -202,72 +202,6 @@ __global__ void k_IirOptimized(
   }
 }
 
-/**
- * Legacy IIR filter kernel - kept for backward compatibility
- * WARNING: This implementation has race conditions and poor performance
- * Use k_IirOptimized instead for new code
- */
-template <class IN_T, class OUT_T, class COEFF_T>
-__global__ void k_IirLegacy(
-    const COEFF_T* bCoeffs,      // feedforward coefficients
-    const COEFF_T* aCoeffs,      // feedback coefficients (a[0] is always 1.0)
-    uint32_t coeffCount,
-    IN_T* inputHistory,          // input history buffer - RACE CONDITION RISK!
-    OUT_T* outputHistory,        // output history buffer - RACE CONDITION RISK!
-    const IN_T* input,
-    OUT_T* output,
-    uint32_t numElements) {
-
-  uint32_t elementIndex = blockDim.x * blockIdx.x + threadIdx.x;
-
-  if (elementIndex >= numElements) {
-    return;
-  }
-
-  // DANGEROUS: Multiple threads writing to same history locations
-  // This causes race conditions and incorrect results
-  for (uint32_t elem = elementIndex; elem < numElements; elem += gridDim.x * blockDim.x) {
-    // Compute feedforward part (input terms)
-    OUT_T feedforward = zero<OUT_T>();
-    for (uint32_t i = 0; i < coeffCount; i++) {
-      IN_T inputVal;
-      if (i == 0) {
-        inputVal = input[elem];
-      } else {
-        // RACE CONDITION: Multiple threads reading/writing same locations
-        inputVal = inputHistory[i - 1];
-      }
-      feedforward += inputVal * bCoeffs[i];
-    }
-
-    // Compute feedback part (output terms)
-    OUT_T feedback = zero<OUT_T>();
-    for (uint32_t i = 1; i < coeffCount; i++) {
-      // RACE CONDITION: Multiple threads reading/writing same locations
-      feedback += outputHistory[i - 1] * aCoeffs[i];
-    }
-
-    // Compute output: feedforward - feedback
-    OUT_T result = feedforward - feedback;
-
-    // Update output
-    output[elem] = result;
-
-    // RACE CONDITION: Multiple threads writing to same history locations
-    // Shift input history
-    for (int32_t i = coeffCount - 2; i >= 0; i--) {
-      inputHistory[i + 1] = inputHistory[i];
-    }
-    inputHistory[0] = input[elem];
-
-    // RACE CONDITION: Multiple threads writing to same history locations
-    // Shift output history
-    for (int32_t i = coeffCount - 2; i >= 0; i--) {
-      outputHistory[i + 1] = outputHistory[i];
-    }
-    outputHistory[0] = result;
-  }
-}
 
 /**
  * Optimized IIR filter implementation using thread-private history
@@ -281,8 +215,8 @@ __global__ void k_IirLegacy(
  * @param bCoeffs Feedforward coefficients [b0, b1, b2, ...]
  * @param aCoeffs Feedback coefficients [1.0, -a1, -a2, ...]
  * @param coeffCount Number of coefficients (same for b and a)
- * @param inputHistory IGNORED - Legacy parameter, kept for API compatibility
- * @param outputHistory IGNORED - Legacy parameter, kept for API compatibility
+ * @param inputHistory IGNORED - Parameter kept for API consistency
+ * @param outputHistory IGNORED - Parameter kept for API consistency
  * @param input Input signal array
  * @param output Output signal array
  * @param numElements Number of elements to process
@@ -343,8 +277,7 @@ static cudaError_t iirGenericOptimized(
     return cudaErrorInvalidValue;
   }
 
-  // Launch optimized kernel
-  // Note: We use the template parameter MAX_COEFF_COUNT to ensure compile-time bounds checking
+  // Launch optimized kernel with compile-time bounds checking via template parameter
   switch (coeffCount) {
     case 2:  // 1st order filter
       k_IirOptimized<IN_T, OUT_T, COEFF_T, 2><<<numBlocks, threadsPerBlock, sharedMemSize, cudaStream>>>(
@@ -383,47 +316,6 @@ static cudaError_t iirGenericOptimized(
   SIMPLE_CUDA_FNC_END("IIR Optimized");
 }
 
-/**
- * Legacy IIR filter implementation - DEPRECATED
- *
- * This function uses the old implementation with race conditions.
- * It is kept only for backward compatibility.
- * New code should use iirGenericOptimized instead.
- *
- * WARNING: This implementation has serious race conditions where multiple
- * threads write to the same history buffer locations simultaneously.
- * Results will be incorrect for parallel execution.
- */
-template <class IN_T, class OUT_T, class COEFF_T>
-static cudaError_t iirGenericLegacy(
-    const COEFF_T* bCoeffs,
-    const COEFF_T* aCoeffs,
-    size_t coeffCount,
-    IN_T* inputHistory,
-    OUT_T* outputHistory,
-    const IN_T* input,
-    OUT_T* output,
-    size_t numElements,
-    int32_t cudaDevice,
-    cudaStream_t cudaStream) {
-
-  SIMPLE_CUDA_FNC_START("IIR Legacy");
-
-  if (coeffCount < 2) {
-    return cudaErrorInvalidValue;
-  }
-
-  // Set reasonable thread/block configuration for legacy kernel
-  // WARNING: This kernel has race conditions!
-  const int threads = DEFAULT_THREADS_PER_BLOCK;
-  const int blocks = (numElements + threads - 1) / threads;
-
-  k_IirLegacy<IN_T, OUT_T, COEFF_T><<<blocks, threads, 0, cudaStream>>>(
-      bCoeffs, aCoeffs, coeffCount, inputHistory, outputHistory,
-      input, output, numElements);
-
-  SIMPLE_CUDA_FNC_END("IIR Legacy");
-}
 
 /**
  * High-performance IIR filter for float data using optimized implementation
@@ -600,43 +492,6 @@ static cudaError_t iirGenericCustom(
   SIMPLE_CUDA_FNC_END("IIR Custom");
 }
 
-/**
- * Legacy IIR filter implementation - DEPRECATED
- * Kept only for backward compatibility
- */
-GSDR_C_LINKAGE cudaError_t gsdrIirFFLegacy(
-    const float* bCoeffs,
-    const float* aCoeffs,
-    size_t coeffCount,
-    float* inputHistory,
-    float* outputHistory,
-    const float* input,
-    float* output,
-    size_t numElements,
-    int32_t cudaDevice,
-    cudaStream_t cudaStream) GSDR_NO_EXCEPT {
-
-  return iirGenericLegacy<float, float, float>(
-      bCoeffs, aCoeffs, coeffCount, inputHistory, outputHistory,
-      input, output, numElements, cudaDevice, cudaStream);
-}
-
-GSDR_C_LINKAGE cudaError_t gsdrIirCCLegacy(
-    const float* bCoeffs,
-    const float* aCoeffs,
-    size_t coeffCount,
-    cuComplex* inputHistory,
-    cuComplex* outputHistory,
-    const cuComplex* input,
-    cuComplex* output,
-    size_t numElements,
-    int32_t cudaDevice,
-    cudaStream_t cudaStream) GSDR_NO_EXCEPT {
-
-  return iirGenericLegacy<cuComplex, cuComplex, float>(
-      bCoeffs, aCoeffs, coeffCount, inputHistory, outputHistory,
-      input, output, numElements, cudaDevice, cudaStream);
-}
 
 /**
  * Custom IIR filter with configurable samples per thread

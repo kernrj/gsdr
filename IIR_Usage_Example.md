@@ -1,8 +1,8 @@
-# IIR Filter Usage Example - OPTIMIZED IMPLEMENTATION
+# IIR Filter Usage Example
 
-This document explains how to use the optimized IIR (Infinite Impulse Response) filter functions in the GSDR library. The optimized implementation addresses critical issues in the legacy version and provides significantly better performance.
+This document explains how to use the high-performance IIR (Infinite Impulse Response) filter functions in the GSDR library. The implementation provides excellent performance through advanced CUDA optimization techniques.
 
-## 🚀 Key Improvements in Optimized Version
+## 🚀 Key Features
 
 ### Fixed Critical Issues:
 - **Race Conditions Eliminated**: Multiple threads no longer write to the same history buffer locations
@@ -18,14 +18,14 @@ This document explains how to use the optimized IIR (Infinite Impulse Response) 
 
 ## 📋 Function Signatures
 
-### Primary Optimized Functions (Recommended)
+### Primary Functions
 ```cpp
 cudaError_t gsdrIirFF(           // Float IIR filter
     const float* bCoeffs,        // Feedforward coefficients [b0, b1, b2, ...]
     const float* aCoeffs,        // Feedback coefficients [1.0, -a1, -a2, ...]
     size_t coeffCount,           // Number of coefficients
-    float* inputHistory,         // IGNORED - kept for API compatibility
-    float* outputHistory,        // IGNORED - kept for API compatibility
+    float* inputHistory,         // History buffers managed internally
+    float* outputHistory,        // History buffers managed internally
     const float* input,          // Input samples in GPU memory
     float* output,               // Output samples in GPU memory
     size_t numElements,          // Number of input samples
@@ -64,21 +64,6 @@ cudaError_t gsdrIirFFCustom(     // Custom performance tuning
 );
 ```
 
-### Legacy Functions (Deprecated - DO NOT USE)
-```cpp
-cudaError_t gsdrIirFFLegacy(     // ⚠️ HAS RACE CONDITIONS
-    const float* bCoeffs,        // Feedforward coefficients
-    const float* aCoeffs,        // Feedback coefficients
-    size_t coeffCount,           // Number of coefficients
-    float* inputHistory,         // ⚠️ RACE CONDITION RISK
-    float* outputHistory,        // ⚠️ RACE CONDITION RISK
-    const float* input,          // Input samples
-    float* output,               // Output samples
-    size_t numElements,          // Number of elements
-    int32_t cudaDevice,          // CUDA device ID
-    cudaStream_t cudaStream      // CUDA stream
-);
-```
 
 ## 🔧 Coefficient Format
 
@@ -216,9 +201,8 @@ int main() {
 ## ⚠️ Critical Notes
 
 ### History Buffer Management:
-- **Legacy functions**: Require manual history buffer management (prone to errors)
-- **Optimized functions**: History managed internally by each thread (safe and efficient)
-- **API Compatibility**: Old history parameters ignored in optimized version
+- **All functions**: History managed internally by each thread (safe and efficient)
+- **API Design**: History parameters are kept for API consistency but managed internally
 
 ### Performance Optimization:
 - **Large Batches**: Process >10K samples for optimal performance
@@ -236,8 +220,8 @@ int main() {
 ### Common Issues:
 1. **Incorrect Results**: Check coefficient format and normalization
 2. **CUDA Errors**: Verify memory allocation and data transfers
-3. **Performance Issues**: Try different samplesPerThread values
-4. **Race Conditions**: Use optimized functions, not legacy versions
+3. **Performance Issues**: Try different samplesPerThread values (4-32 range)
+4. **Filter Instability**: Ensure all filter poles are inside the unit circle
 
 ### Debug Tips:
 1. Start with small data sizes to verify correctness

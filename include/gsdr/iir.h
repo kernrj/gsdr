@@ -190,51 +190,5 @@ GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrIirCCCustom(
     int32_t cudaDevice,
     cudaStream_t cudaStream) GSDR_NO_EXCEPT;
 
-/**
- * DEPRECATED: Legacy IIR filter implementation with race conditions
- *
- * This function is kept only for backward compatibility with existing code.
- * It contains serious race conditions where multiple threads write to the same
- * history buffer locations simultaneously, leading to incorrect results.
- *
- * @deprecated Use gsdrIirFF or gsdrIirCC instead
- * @param bCoeffs Feedforward coefficients [b0, b1, b2, ...] in GPU memory
- * @param aCoeffs Feedback coefficients [1.0, -a1, -a2, ...] in GPU memory
- * @param coeffCount Number of coefficients (same for b and a arrays)
- * @param inputHistory Input history buffer (size: coeffCount-1) - RACE CONDITION RISK
- * @param outputHistory Output history buffer (size: coeffCount-1) - RACE CONDITION RISK
- * @param input Input array in GPU memory
- * @param output Output array in GPU memory
- * @param numElements Number of elements to process
- * @param cudaDevice CUDA device ID
- * @param cudaStream CUDA stream for execution
- * @return cudaError_t CUDA error code
- *
- * @warning This implementation has race conditions and should not be used
- * @warning Results will be incorrect for parallel execution
- */
-GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrIirFFLegacy(
-    const float* bCoeffs,
-    const float* aCoeffs,
-    size_t coeffCount,
-    float* inputHistory,
-    float* outputHistory,
-    const float* input,
-    float* output,
-    size_t numElements,
-    int32_t cudaDevice,
-    cudaStream_t cudaStream) GSDR_NO_EXCEPT;
-
-GSDR_C_LINKAGE GSDR_PUBLIC cudaError_t gsdrIirCCLegacy(
-    const float* bCoeffs,
-    const float* aCoeffs,
-    size_t coeffCount,
-    cuComplex* inputHistory,
-    cuComplex* outputHistory,
-    const cuComplex* input,
-    cuComplex* output,
-    size_t numElements,
-    int32_t cudaDevice,
-    cudaStream_t cudaStream) GSDR_NO_EXCEPT;
 
 #endif  // GPUSDR_IIR_H
