@@ -336,7 +336,7 @@ static cudaError_t iirGenericOptimized(
 
   // Calculate shared memory requirements
   // We need space for both b and a coefficients
-  size_t sharedMemSize = 2 * coeffCount * sizeof(COEFF_T);
+  size_t sharedMemSize = 2 * MAX_COEFF_COUNT * sizeof(COEFF_T);
 
   // Ensure shared memory doesn't exceed reasonable limits (typically 48KB per SM)
   if (sharedMemSize > MAX_SHARED_MEMORY_BYTES) {
