@@ -22,6 +22,7 @@
 #include <gsdr/cuda_util.h>
 #include <gsdr/fir.h>
 #include <gsdr/fm.h>
+#include <gsdr/iir.h>
 #include <gsdr/quad_demod.h>
 #include <gsdr/trig.h>
 #include <gsdr/util.h>
