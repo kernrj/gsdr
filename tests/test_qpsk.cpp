@@ -20,7 +20,15 @@
 #include <vector>
 #include <algorithm>
 
-#include "test_main.cpp"
+#include <gtest/gtest.h>
+#include <cuda_runtime.h>
+#include <cuComplex.h>
+#include <vector>
+#include <algorithm>
+#include <random>
+#include <map>
+#include <limits>
+
 #include <gsdr/qpsk.h>
 
 class QpskTest : public CudaTestBase {
@@ -28,11 +36,9 @@ protected:
     void SetUp() override {
         CudaTestBase::SetUp();
 
-        // Initialize QPSK constellation points
-        error = gsdrQpskModulate(testData.data(), modulatedData.data(), testData.size(), 1.0f, 0, stream);
-        if (error != cudaSuccess) {
-            GTEST_SKIP() << "QPSK modulation failed, skipping test";
-        }
+        // Initialize vectors properly
+        modulatedData.resize(numSymbols);
+        demodulatedData.resize(numSymbols / 4 + 1, 0);
     }
 
     cudaError_t error = cudaSuccess;
@@ -40,16 +46,9 @@ protected:
     std::vector<uint8_t> testData = test_utils::generateQpskTestData(numSymbols);
     std::vector<cuComplex> modulatedData;
     std::vector<uint8_t> demodulatedData;
-
-    void setupData() {
-        modulatedData.resize(numSymbols);
-        demodulatedData.resize(numSymbols / 4 + 1, 0);
-    }
 };
 
 TEST_F(QpskTest, ModulationTest) {
-    setupData();
-
     // Test basic modulation
     error = gsdrQpskModulate(testData.data(), modulatedData.data(), numSymbols, 1.0f, 0, stream);
     EXPECT_EQ(error, cudaSuccess) << "QPSK modulation failed";
@@ -86,8 +85,6 @@ TEST_F(QpskTest, ModulationTest) {
 }
 
 TEST_F(QpskTest, DemodulationTest) {
-    setupData();
-
     // First modulate the data
     error = gsdrQpskModulate(testData.data(), modulatedData.data(), numSymbols, 1.0f, 0, stream);
     EXPECT_EQ(error, cudaSuccess) << "QPSK modulation failed";
@@ -102,8 +99,6 @@ TEST_F(QpskTest, DemodulationTest) {
 }
 
 TEST_F(QpskTest, RoundTripTest) {
-    setupData();
-
     // Perform modulation-demodulation round trip
     error = gsdrQpskModulate(testData.data(), modulatedData.data(), numSymbols, 1.0f, 0, stream);
     EXPECT_EQ(error, cudaSuccess) << "QPSK modulation failed";
@@ -117,8 +112,6 @@ TEST_F(QpskTest, RoundTripTest) {
 }
 
 TEST_F(QpskTest, AmplitudeTest) {
-    setupData();
-
     // Test with different amplitudes
     const std::vector<float> amplitudes = {0.5f, 1.0f, 2.0f, 10.0f};
 
@@ -143,8 +136,6 @@ TEST_F(QpskTest, AmplitudeTest) {
 }
 
 TEST_F(QpskTest, ConstellationPointsTest) {
-    setupData();
-
     // Test that all constellation points are correct
     error = gsdrQpskModulate(testData.data(), modulatedData.data(), numSymbols, 1.0f, 0, stream);
     EXPECT_EQ(error, cudaSuccess) << "QPSK modulation failed";
@@ -179,8 +170,6 @@ TEST_F(QpskTest, ConstellationPointsTest) {
 }
 
 TEST_F(QpskTest, BitErrorRateTest) {
-    setupData();
-
     // Test with added noise to simulate channel impairments
     const float snr_db = 10.0f; // 10 dB SNR
     const float noise_std = 1.0f / sqrtf(powf(10.0f, snr_db / 10.0f));

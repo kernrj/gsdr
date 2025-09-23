@@ -284,11 +284,23 @@ GSDR_C_LINKAGE cudaError_t gsdrQpsk256InitConstellation(
     k_InitQpsk256Circular<<<1, 1, 0, cudaStream>>>(temp_constellation, amplitude);
   }
 
+  // Check for kernel launch errors
+  status = cudaGetLastError();
+  if (status != cudaSuccess) {
+    cudaFree(temp_constellation);
+    return status;
+  }
+
   // Copy to constant memory
   if (constellationType == 0) {
-    cudaMemcpyToSymbol(c_qpsk256_rectangular, temp_constellation, 256 * sizeof(cuComplex));
+    status = cudaMemcpyToSymbol(c_qpsk256_rectangular, temp_constellation, 256 * sizeof(cuComplex));
   } else {
-    cudaMemcpyToSymbol(c_qpsk256_circular, temp_constellation, 256 * sizeof(cuComplex));
+    status = cudaMemcpyToSymbol(c_qpsk256_circular, temp_constellation, 256 * sizeof(cuComplex));
+  }
+
+  if (status != cudaSuccess) {
+    cudaFree(temp_constellation);
+    return status;
   }
 
   // Clean up

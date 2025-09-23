@@ -22,6 +22,7 @@
 #include "gsdr/util.h"
 
 // Template for QPSK modulation with variable number of streams
+// This kernel processes multiple streams from consolidated input/output buffers
 template <int NUM_STREAMS>
 __global__ void k_QpskModulateTemplated(const uint8_t* __restrict__ inputBits, cuComplex* __restrict__ output, uint32_t numSymbols, float amplitude) {
   uint32_t symbolIndex = blockDim.x * blockIdx.x + threadIdx.x;
@@ -34,10 +35,12 @@ __global__ void k_QpskModulateTemplated(const uint8_t* __restrict__ inputBits, c
   const uint32_t byteIndex = symbolIndex / 4;
   const uint32_t bitOffset = (symbolIndex % 4) * 2;
 
-  // Process multiple streams
+  // Process multiple streams from consolidated buffer
+  // Input layout: [stream0_byte0, stream0_byte1, ..., stream1_byte0, stream1_byte1, ...]
   for (int streamIdx = 0; streamIdx < NUM_STREAMS; ++streamIdx) {
-    const uint8_t* currentInputBits = inputBits + streamIdx * (numSymbols / 4 + 1);  // Each stream has its own input array
-    const uint8_t bits = (currentInputBits[byteIndex] >> bitOffset) & 0x3;
+    // Calculate offset in consolidated buffer for this stream
+    const uint8_t* streamInputBits = inputBits + streamIdx * (numSymbols / 4 + 1);
+    const uint8_t bits = (streamInputBits[byteIndex] >> bitOffset) & 0x3;
 
     // Map bits to QPSK constellation
     cuComplex symbol;
@@ -49,11 +52,14 @@ __global__ void k_QpskModulateTemplated(const uint8_t* __restrict__ inputBits, c
       default: symbol = make_cuComplex(0.0f, 0.0f); break;
     }
 
-    output[streamIdx * numSymbols + symbolIndex] = symbol;
+    // Output layout: [stream0_symbol0, stream0_symbol1, ..., stream1_symbol0, stream1_symbol1, ...]
+    cuComplex* streamOutput = output + streamIdx * numSymbols;
+    streamOutput[symbolIndex] = symbol;
   }
 }
 
 // Template for QPSK demodulation with variable number of streams
+// This kernel processes multiple streams from consolidated input/output buffers
 template <int NUM_STREAMS>
 __global__ void k_QpskDemodulateTemplated(const cuComplex* __restrict__ input, uint8_t* __restrict__ outputBits, uint32_t numSymbols) {
   uint32_t symbolIndex = blockDim.x * blockIdx.x + threadIdx.x;
@@ -62,9 +68,12 @@ __global__ void k_QpskDemodulateTemplated(const cuComplex* __restrict__ input, u
     return;
   }
 
-  // Process multiple streams
+  // Process multiple streams from consolidated buffer
+  // Input layout: [stream0_symbol0, stream0_symbol1, ..., stream1_symbol0, stream1_symbol1, ...]
   for (int streamIdx = 0; streamIdx < NUM_STREAMS; ++streamIdx) {
-    const cuComplex symbol = input[streamIdx * numSymbols + symbolIndex];
+    // Calculate offset in consolidated buffer for this stream
+    const cuComplex* streamInput = input + streamIdx * numSymbols;
+    const cuComplex symbol = streamInput[symbolIndex];
 
     // QPSK demodulation: determine quadrant based on sign of real and imaginary parts
     uint8_t bits = 0;
@@ -74,12 +83,19 @@ __global__ void k_QpskDemodulateTemplated(const cuComplex* __restrict__ input, u
       bits = (symbol.y >= 0.0f) ? 0x1 : 0x3;
     }
 
-    // Pack bits into output array (4 symbols per byte)
-    uint8_t* currentOutputBits = outputBits + streamIdx * (numSymbols / 4 + 1);
+    // Output layout: [stream0_byte0, stream0_byte1, ..., stream1_byte0, stream1_byte1, ...]
+    uint8_t* streamOutputBits = outputBits + streamIdx * (numSymbols / 4 + 1);
     const uint32_t byteIndex = symbolIndex / 4;
     const uint32_t bitOffset = (symbolIndex % 4) * 2;
     const uint8_t mask = ~(0x3 << bitOffset);
-    currentOutputBits[byteIndex] = (currentOutputBits[byteIndex] & mask) | (bits << bitOffset);
+
+    // Use atomic operation to avoid race condition when multiple threads write to same byte
+    uint8_t* bytePtr = streamOutputBits + byteIndex;
+    uint8_t currentValue = *bytePtr;
+    uint8_t newValue;
+    do {
+      newValue = (currentValue & mask) | (bits << bitOffset);
+    } while (atomicCAS(bytePtr, currentValue, newValue) != currentValue);
   }
 }
 
@@ -237,11 +253,18 @@ __global__ void k_QpskDemodulate(
     }
   }
 
-  // Pack bits into output array (4 symbols per byte)
+  // Pack bits into output array (4 symbols per byte) - use atomic operation to avoid race condition
   const uint32_t byteIndex = symbolIndex / 4;
   const uint32_t bitOffset = (symbolIndex % 4) * 2;
   const uint8_t mask = ~(0x3 << bitOffset);  // Clear the 2 bits
-  outputBits[byteIndex] = (outputBits[byteIndex] & mask) | (bits << bitOffset);
+
+  // Use atomic operation to avoid race condition when multiple threads write to same byte
+  uint8_t* bytePtr = outputBits + byteIndex;
+  uint8_t currentValue = *bytePtr;
+  uint8_t newValue;
+  do {
+    newValue = (currentValue & mask) | (bits << bitOffset);
+  } while (atomicCAS(bytePtr, currentValue, newValue) != currentValue);
 }
 
 __global__ void k_QpskDemodulate4x(
@@ -302,21 +325,42 @@ __global__ void k_QpskDemodulate4x(
   const uint32_t byteIndex = symbolIndex / 4;
   const uint32_t bitOffset = (symbolIndex % 4) * 2;
 
+  // Use atomic operations to avoid race conditions when multiple threads write to same byte
   // Stream 0
   const uint8_t mask0 = ~(0x3 << bitOffset);
-  outputBits0[byteIndex] = (outputBits0[byteIndex] & mask0) | (bits0 << bitOffset);
+  uint8_t* bytePtr0 = outputBits0 + byteIndex;
+  uint8_t currentValue0 = *bytePtr0;
+  uint8_t newValue0;
+  do {
+    newValue0 = (currentValue0 & mask0) | (bits0 << bitOffset);
+  } while (atomicCAS(bytePtr0, currentValue0, newValue0) != currentValue0);
 
   // Stream 1
   const uint8_t mask1 = ~(0x3 << bitOffset);
-  outputBits1[byteIndex] = (outputBits1[byteIndex] & mask1) | (bits1 << bitOffset);
+  uint8_t* bytePtr1 = outputBits1 + byteIndex;
+  uint8_t currentValue1 = *bytePtr1;
+  uint8_t newValue1;
+  do {
+    newValue1 = (currentValue1 & mask1) | (bits1 << bitOffset);
+  } while (atomicCAS(bytePtr1, currentValue1, newValue1) != currentValue1);
 
   // Stream 2
   const uint8_t mask2 = ~(0x3 << bitOffset);
-  outputBits2[byteIndex] = (outputBits2[byteIndex] & mask2) | (bits2 << bitOffset);
+  uint8_t* bytePtr2 = outputBits2 + byteIndex;
+  uint8_t currentValue2 = *bytePtr2;
+  uint8_t newValue2;
+  do {
+    newValue2 = (currentValue2 & mask2) | (bits2 << bitOffset);
+  } while (atomicCAS(bytePtr2, currentValue2, newValue2) != currentValue2);
 
   // Stream 3
   const uint8_t mask3 = ~(0x3 << bitOffset);
-  outputBits3[byteIndex] = (outputBits3[byteIndex] & mask3) | (bits3 << bitOffset);
+  uint8_t* bytePtr3 = outputBits3 + byteIndex;
+  uint8_t currentValue3 = *bytePtr3;
+  uint8_t newValue3;
+  do {
+    newValue3 = (currentValue3 & mask3) | (bits3 << bitOffset);
+  } while (atomicCAS(bytePtr3, currentValue3, newValue3) != currentValue3);
 }
 
 GSDR_C_LINKAGE cudaError_t gsdrQpskModulate(
