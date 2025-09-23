@@ -15,6 +15,7 @@ set(
     src/fm.cu
     src/magnitude.cu
     src/multiply.cu
+    src/qpsk.cu
     src/quad_demod.cu
     src/trig.cu)
 
