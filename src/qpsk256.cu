@@ -270,10 +270,7 @@ GSDR_C_LINKAGE cudaError_t gsdrQpsk256InitConstellation(
 
   // Allocate temporary memory for constellation initialization
   cuComplex* temp_constellation;
-  cudaError_t status = cudaMalloc(&temp_constellation, 256 * sizeof(cuComplex));
-  if (status != cudaSuccess) {
-    return status;
-  }
+  SAFE_CUDA_RET(cudaMalloc(&temp_constellation, 256 * sizeof(cuComplex)));
 
   // Initialize constellation on GPU
   if (constellationType == 0) {
@@ -284,27 +281,15 @@ GSDR_C_LINKAGE cudaError_t gsdrQpsk256InitConstellation(
     k_InitQpsk256Circular<<<1, 1, 0, cudaStream>>>(temp_constellation, amplitude);
   }
 
-  // Check for kernel launch errors
-  status = cudaGetLastError();
-  if (status != cudaSuccess) {
-    cudaFree(temp_constellation);
-    return status;
-  }
-
   // Copy to constant memory
   if (constellationType == 0) {
-    status = cudaMemcpyToSymbol(c_qpsk256_rectangular, temp_constellation, 256 * sizeof(cuComplex));
+    SAFE_CUDA_RET(cudaMemcpyToSymbol(c_qpsk256_rectangular, temp_constellation, 256 * sizeof(cuComplex)));
   } else {
-    status = cudaMemcpyToSymbol(c_qpsk256_circular, temp_constellation, 256 * sizeof(cuComplex));
-  }
-
-  if (status != cudaSuccess) {
-    cudaFree(temp_constellation);
-    return status;
+    SAFE_CUDA_RET(cudaMemcpyToSymbol(c_qpsk256_circular, temp_constellation, 256 * sizeof(cuComplex)));
   }
 
   // Clean up
-  cudaFree(temp_constellation);
+  SAFE_CUDA_RET(cudaFree(temp_constellation));
 
   SIMPLE_CUDA_FNC_END("gsdrQpsk256InitConstellation()")
 }
