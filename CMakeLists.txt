@@ -16,6 +16,8 @@ set(
     src/iir.cu
     src/magnitude.cu
     src/multiply.cu
+    src/qpsk.cu
+    src/qpsk256.cu
     src/quad_demod.cu
     src/trig.cu)
 

@@ -1,0 +1,63 @@
+name: Status Badge
+
+on:
+  push:
+    branches: [ main ]
+  workflow_run:
+    workflows: ["Tests"]
+    types: [completed]
+
+jobs:
+  update-badge:
+    name: Update Status Badge
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion != 'skipped'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Generate status badge
+      run: |
+        # Get the latest workflow run status
+        WORKFLOW_RUN_ID="${{ github.event.workflow_run.id }}"
+        STATUS="${{ github.event.workflow_run.conclusion }}"
+
+        if [ "$STATUS" = "success" ]; then
+          BADGE_COLOR="brightgreen"
+          BADGE_TEXT="passing"
+        elif [ "$STATUS" = "failure" ]; then
+          BADGE_COLOR="red"
+          BADGE_TEXT="failing"
+        else
+          BADGE_COLOR="yellow"
+          BADGE_TEXT="unknown"
+        fi
+
+        # Create badge markdown
+        BADGE_URL="https://img.shields.io/badge/tests-${BADGE_TEXT}-${BADGE_COLOR}"
+        BADGE_MARKDOWN="[![Tests](${BADGE_URL})](https://github.com/${{ github.repository }}/actions/workflows/test.yml)"
+
+        echo "Badge markdown: $BADGE_MARKDOWN"
+        echo "BADGE_MARKDOWN=$BADGE_MARKDOWN" >> $GITHUB_ENV
+
+    - name: Update README with badge
+      run: |
+        # Check if README.md exists
+        if [ -f README.md ]; then
+          # Remove existing badge if present
+          sed -i '/<!--- status badge start -->/,/<!--- status badge end -->/d' README.md
+
+          # Add new badge at the top
+          sed -i "1i<!--- status badge start -->\\n${BADGE_MARKDOWN}\\n<!--- status badge end -->" README.md
+
+          echo "Updated README.md with status badge"
+        fi
+
+    - name: Commit badge update
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add README.md
+        git diff --staged --quiet || git commit -m "Update status badge [skip ci]"
+        git push
