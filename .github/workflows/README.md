@@ -2,202 +2,170 @@
 
 This directory contains GitHub Actions workflows for the GSDR project. These workflows provide comprehensive CI/CD capabilities for testing, building, and validating the codebase.
 
+## ⚠️ Important: GitHub Actions Limitations
+
+**GitHub Actions runners do NOT have CUDA-capable GPUs.** This means:
+
+- ✅ **Compilation**: All code compiles successfully
+- ✅ **Build Validation**: Library builds correctly
+- ✅ **Static Analysis**: Code quality checks pass
+- ❌ **Runtime Testing**: CUDA kernels cannot execute (no GPU available)
+
 ## Workflows Overview
 
-### 1. `test.yml` - Main Test Workflow
+### 1. `test.yml` - Main CI Workflow (RECOMMENDED)
 **Triggers:**
 - Pull requests (opened, synchronized, reopened, ready for review)
 - Pushes to main/develop branches
 
 **Features:**
-- ✅ CUDA 11.8 setup
-- ✅ Full test suite execution
-- ✅ Automatic PR commenting with results
-- ✅ Test artifact uploads
+- ✅ **Smart CUDA Detection**: Attempts CUDA build, falls back to CPU-only
+- ✅ **Build Validation**: Verifies compilation succeeds
+- ✅ **Test Compilation**: Compiles test suite (when CUDA available)
+- ✅ **Detailed Reporting**: Clear status messages about GPU limitations
+- ✅ **PR Integration**: Automatic status comments
 
 **Use Case:** Primary CI for all PRs and commits
 
-### 2. `ci-comprehensive.yml` - Comprehensive CI
+### 2. `ci-comprehensive.yml` - Full CI Pipeline
 **Triggers:**
 - Pull requests
 - Pushes to main/develop
 - Manual dispatch
 
 **Features:**
-- ✅ Pre-checks (syntax validation, code quality)
-- ✅ Multi-CUDA version testing (11.8, 12.0)
-- ✅ Documentation validation
-- ✅ Detailed reporting and status checks
+- ✅ **Pre-checks**: Syntax validation and code quality
+- ✅ **Multi-environment**: Tests different configurations
+- ✅ **Documentation**: README validation
+- ✅ **Detailed Reporting**: Comprehensive build reports
 
-**Use Case:** Full CI pipeline with multiple checks
+**Use Case:** Complete validation pipeline
 
-### 3. `ci.yml` - Basic CI
-**Triggers:**
-- Pull requests
-- Pushes to main/develop
-
-**Features:**
-- ✅ Simple CUDA setup
-- ✅ Basic build and test
-- ✅ Test result validation
-
-**Use Case:** Lightweight CI for quick feedback
-
-### 4. `cuda-matrix.yml` - CUDA Compatibility
-**Triggers:**
-- Pushes to main
-- Pull requests
-- Weekly schedule (Sundays at 2 AM UTC)
-
-**Features:**
-- ✅ Multiple CUDA versions (11.8, 12.0)
-- ✅ Different CUDA architectures
-- ✅ Compatibility validation
-
-**Use Case:** Ensuring compatibility across CUDA versions
-
-### 5. `manual-test.yml` - Manual Testing
+### 3. `manual-test.yml` - Manual Testing
 **Triggers:**
 - Manual workflow dispatch
 
 **Features:**
-- ✅ Configurable build type (Debug/Release)
-- ✅ Configurable CUDA version
-- ✅ Optional coverage reporting
-- ✅ Optional extended tests
+- ✅ **Configurable Options**: Custom build types and settings
+- ✅ **Extended Testing**: Optional performance tests
+- ✅ **Coverage Analysis**: Code coverage reporting
 
-**Use Case:** Manual testing with custom configurations
+**Use Case:** Manual testing with specific configurations
 
-### 6. `status.yml` - Status Badge Updates
-**Triggers:**
-- Pushes to main
-- Completed test workflows
+## Testing Strategy
 
-**Features:**
-- ✅ Automatic status badge generation
-- ✅ README.md updates with build status
-- ✅ Badge color coding (green/red/yellow)
+### What GitHub Actions Can Do
+1. **Compile Validation**: Ensure all CUDA/C++ code compiles correctly
+2. **Build Verification**: Confirm library builds successfully
+3. **Code Quality**: Check for syntax errors and basic issues
+4. **Documentation**: Validate README files and structure
 
-**Use Case:** Keeping repository status badges current
+### What GitHub Actions Cannot Do
+1. **GPU Runtime Testing**: No CUDA-capable GPUs available
+2. **Performance Testing**: Cannot measure actual GPU performance
+3. **Integration Testing**: Cannot test full signal processing pipelines
+4. **Hardware Validation**: Cannot verify GPU-specific optimizations
 
-### 7. `pr-comment.yml` - PR Comment Trigger
-**Triggers:**
-- Issue comments containing `/test`
+### Recommended Testing Approach
 
-**Features:**
-- ✅ Manual test triggering via PR comments
-- ✅ Automatic result commenting
-- ✅ Permission-based access control
-
-**Use Case:** Manual test execution from PR comments
-
-## Workflow Triggers
-
-### Automatic Triggers
-- **Pull Requests**: All PR events (opened, updated, synchronized, ready_for_review)
-- **Main Branch Pushes**: Automatic testing on main branch updates
-- **Scheduled**: Weekly CUDA compatibility testing
-- **Workflow Dependencies**: Status updates when other workflows complete
-
-### Manual Triggers
-- **Workflow Dispatch**: Manual test execution with custom parameters
-- **PR Comments**: `/test` command in PR comments (requires write permissions)
-
-## Configuration Options
-
-### CUDA Versions Supported
-- **11.8**: Compatible with CUDA architectures 75, 80, 86
-- **12.0**: Compatible with CUDA architectures 80, 86, 89
-
-### Build Types
-- **Release**: Optimized build with full testing
-- **Debug**: Debug build with additional checks
-
-### Test Coverage
-- **Standard Tests**: All unit and integration tests
-- **Extended Tests**: Performance tests and edge cases
-- **Coverage Reports**: Code coverage analysis (when enabled)
-
-## Usage Examples
-
-### For Maintainers
-1. **Regular Development**: PR workflow runs automatically
-2. **Release Testing**: Use manual workflow with extended tests
-3. **Compatibility**: Weekly scheduled runs ensure CUDA compatibility
-
-### For Contributors
-1. **PR Creation**: Automatic testing on PR creation
-2. **PR Updates**: Automatic re-testing on every push to PR branch
-3. **Manual Testing**: Use `/test` comment to trigger additional runs
-
-### For Reviewers
-1. **Status Badge**: Quick visual indication of test status
-2. **Workflow Results**: Detailed test reports in PR comments
-3. **Manual Triggers**: Ability to re-run tests if needed
-
-## Status Badges
-
-The repository includes automatically updated status badges:
-
-```markdown
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](https://github.com/your-username/gsdr/actions/workflows/test.yml)
-[![CUDA](https://img.shields.io/badge/CUDA-11.8+-blue)](https://developer.nvidia.com/cuda-toolkit)
+#### For Development (GitHub Actions)
+```bash
+# GitHub Actions automatically:
+# 1. Compiles all code
+# 2. Validates build process
+# 3. Checks for syntax errors
+# 4. Reports compilation status
 ```
+
+#### For Actual Testing (Local GPU System)
+```bash
+# On a system with CUDA-capable GPU:
+mkdir build && cd build
+cmake .. -DUSE_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+make -j$(nproc)
+ctest --output-on-failure --build-config Release
+```
+
+## Workflow Status
+
+### Status Badge
+```markdown
+[![CI Build](https://img.shields.io/badge/CI%20Build-passing-brightgreen)](https://github.com/your-username/gsdr/actions/workflows/test.yml)
+```
+
+- **✅ Green**: Code compiles successfully
+- **❌ Red**: Compilation failed
+- **⏳ Yellow**: Build in progress
+
+### Understanding Results
+
+When you see **✅ CI Build passing**, this means:
+- All C++/CUDA code compiles correctly
+- Library builds successfully
+- No syntax errors detected
+- Code structure is valid
+
+**This does NOT mean**:
+- Tests passed (no GPU available for execution)
+- Performance is optimal
+- GPU-specific optimizations work
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **CUDA Setup Failures**
-   - Ensure Ubuntu 20.04 runner is used
-   - Check CUDA version compatibility
+1. **"CUDA Setup Failed"**
+   - This is expected on GitHub Actions (no GPU runtime)
+   - The workflow will fall back to CPU-only build
+   - Check the build logs for actual compilation errors
 
-2. **Test Timeouts**
-   - Extended tests may take longer
-   - Check for infinite loops in test code
+2. **"Tests Cannot Run"**
+   - This is expected - GitHub Actions cannot run CUDA code
+   - Tests are compiled but not executed
+   - Run tests locally on GPU hardware for full validation
 
-3. **Memory Issues**
-   - Large test arrays may require more memory
-   - Monitor GPU memory usage
+3. **Build Directory Missing**
+   - Fixed in updated workflows
+   - Workflows now handle missing directories gracefully
 
-### Workflow Logs
+### Manual Testing
 
-All workflows provide detailed logs:
-- **Actions Tab**: Real-time workflow execution
-- **Artifacts**: Test results and reports
-- **PR Comments**: Summary of test results
+To run actual GPU tests:
 
-## Performance
+1. **Set up a CUDA development environment**
+2. **Clone the repository**
+3. **Build with tests enabled**:
+   ```bash
+   mkdir build && cd build
+   cmake .. -DUSE_TESTS=ON
+   make
+   ctest --output-on-failure
+   ```
 
-### Execution Times
-- **Standard Tests**: ~5-10 minutes
-- **Extended Tests**: ~15-20 minutes
-- **Full CI**: ~10-15 minutes (parallel execution)
+## Configuration
 
-### Resource Usage
-- **CPU**: 2-4 cores
-- **Memory**: 4-8 GB RAM
-- **GPU**: CUDA-compatible GPU (if available)
+### Environment Variables
+- `BUILD_TYPE`: Release (default) or Debug
+- `CUDA_ARCH`: Target GPU architecture (75 for CUDA 11.8, 80 for 12.0)
+
+### Build Options
+- **Standard Build**: Compiles library and basic tests
+- **Test Build**: Includes comprehensive test suite
+- **Coverage Build**: Adds code coverage analysis
 
 ## Security
 
-- **Permissions**: Workflows use minimal required permissions
-- **External Actions**: All actions are from trusted sources
-- **Artifact Retention**: 30 days for test results, 7 days for manual tests
-
-## Contributing to Workflows
-
-When adding new workflows:
-
-1. Follow the existing naming convention
-2. Include proper error handling
-3. Add documentation in this README
-4. Test workflows thoroughly
-5. Use the most recent action versions
+- **Minimal Permissions**: Workflows use least-privilege access
+- **Trusted Actions**: All actions from verified sources
+- **No Secrets**: No sensitive data stored in workflows
 
 ## Support
 
 For workflow-related issues:
 1. Check the Actions tab for detailed logs
-2. Review workflow documentation above
+2. Review this documentation
 3. Create an issue with workflow logs attached
+
+---
+
+**Note**: These workflows provide compilation validation. For actual GPU testing, run tests on systems with CUDA-capable hardware.
