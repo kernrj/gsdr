@@ -64,26 +64,38 @@ ctest --output-on-failure
 
 ## CI/CD & Testing
 
-### GitHub Actions (Compilation-Only)
+### GitHub Actions (Static Validation)
 
-This project uses GitHub Actions for compilation validation:
+This project uses GitHub Actions for **static code validation** and quality checks:
 
-- **Build Validation**: Compiles code on every PR and push to main branches
-- **Multi-Platform**: Tests compilation on different environments
-- **Status Badge**: Shows build status (✅ passing = compiles successfully)
-- **Documentation Check**: Validates README files
+- **✅ Syntax Validation**: Validates all C++/CUDA files compile without syntax errors
+- **✅ Code Quality**: Checks for TODO/FIXME comments, long lines, and style issues
+- **✅ Project Structure**: Ensures required directories and files are present
+- **✅ Test Coverage**: Counts and validates test files
+- **⚠️ Status Badge**: Shows validation status (✅ passing = code quality checks pass)
 
-⚠️ **Important**: GitHub Actions runners don't have CUDA-capable GPUs, so they perform **compilation-only validation**. The tests are compiled but cannot execute CUDA kernels.
+⚠️ **Important**: GitHub Actions runners don't have CUDA-capable GPUs, so they perform **static analysis only**. No GPU runtime testing is available.
 
 ### Workflow Triggers
 
 - Pull requests (opened, updated, or synchronized)
 - Pushes to main/develop branches
-- Manual dispatch for custom configurations
+- Manual dispatch for custom validation configurations
+- Weekly scheduled validation runs
 
-### Actual GPU Testing
+### What GitHub Actions Validates
 
-For complete testing with GPU execution, run tests locally:
+| Check | Description | Status |
+|-------|-------------|--------|
+| **Syntax Validation** | All C++/CUDA files compile without errors | ✅ Automated |
+| **Code Quality** | No TODO/FIXME comments in production code | ✅ Automated |
+| **Project Structure** | Required directories and files present | ✅ Automated |
+| **Test Coverage** | Test files exist and are properly structured | ✅ Automated |
+| **Documentation** | README and workflow files validated | ✅ Automated |
+
+### Actual GPU Testing (Manual)
+
+For complete testing with GPU execution, run tests locally on CUDA-capable hardware:
 
 ```bash
 # On a system with CUDA-capable GPU
@@ -93,7 +105,7 @@ make -j$(nproc)
 ctest --output-on-failure --build-config Release
 ```
 
-### Testing Components
+### Test Suite Overview
 
 - **6,564+ lines** of comprehensive test code
 - **11 test files** covering all major components
@@ -113,6 +125,18 @@ All operations are optimized for GPU execution with:
 
 ## Testing
 
+### GitHub Actions Validation (Automated)
+
+GitHub Actions performs **static code validation** and quality checks:
+
+- ✅ **Syntax Validation**: All C++/CUDA files compile without syntax errors
+- ✅ **Code Quality**: Checks for TODO/FIXME comments and style issues
+- ✅ **Project Structure**: Validates required directories and files exist
+- ✅ **Test Coverage**: Counts and validates test file structure
+- ⚠️ **GPU Runtime**: Not available (GitHub Actions limitation)
+
+### Local GPU Testing (Manual)
+
 The comprehensive test suite covers:
 
 - **11 test files** with **6,564+ lines** of test code
@@ -121,7 +145,7 @@ The comprehensive test suite covers:
 - **Performance tests** with large datasets (64K+ samples)
 - **Edge case testing** with boundary conditions and error scenarios
 
-### Running Tests (Requires CUDA GPU)
+#### Running Tests (Requires CUDA GPU)
 
 ```bash
 # On a system with CUDA-capable GPU:
@@ -131,16 +155,29 @@ make -j$(nproc)
 ctest --output-on-failure --build-config Release
 ```
 
-### GitHub Actions Testing
+#### Advanced Testing Options
 
-GitHub Actions performs **compilation-only validation** since runners lack CUDA GPUs:
+```bash
+# With code coverage analysis
+cmake .. -DUSE_TESTS=ON -DENABLE_COVERAGE=ON
+make
+ctest --output-on-failure
+lcov --capture --directory . --output-file coverage.info
+genhtml coverage.info --output-directory coverage_report
 
-- ✅ **Compilation**: Verifies all code compiles correctly
-- ✅ **Syntax**: Checks for code quality issues
-- ✅ **Build**: Ensures library builds successfully
-- ⚠️ **Runtime**: Tests cannot execute CUDA kernels (no GPU available)
+# With extended test configurations
+ctest --output-on-failure --build-config Release --rerun-failed
+```
 
-For actual GPU testing, run tests locally on CUDA-capable hardware.
+### Validation Results
+
+GitHub Actions provides **early feedback** on:
+- Code compilation issues
+- Project structure problems
+- Documentation completeness
+- Test suite organization
+
+**For complete validation**, run the full test suite on CUDA-capable hardware.
 
 ## Contributing
 

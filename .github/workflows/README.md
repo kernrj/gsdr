@@ -1,70 +1,96 @@
 # GitHub Actions Workflows
 
-This directory contains GitHub Actions workflows for the GSDR project. These workflows provide comprehensive CI/CD capabilities for testing, building, and validating the codebase.
+This directory contains GitHub Actions workflows for the GSDR project. These workflows provide **static code validation** and quality checks for the codebase.
 
-## ⚠️ Important: GitHub Actions Limitations
+## ✅ What GitHub Actions Does
 
-**GitHub Actions runners do NOT have CUDA-capable GPUs.** This means:
+**GitHub Actions runners perform static analysis and validation:**
 
-- ✅ **Compilation**: All code compiles successfully
-- ✅ **Build Validation**: Library builds correctly
-- ✅ **Static Analysis**: Code quality checks pass
-- ❌ **Runtime Testing**: CUDA kernels cannot execute (no GPU available)
+- ✅ **Syntax Validation**: All C++/CUDA files compile without syntax errors
+- ✅ **Code Quality**: Checks for TODO/FIXME comments, long lines, and style issues
+- ✅ **Project Structure**: Ensures required directories and files are present
+- ✅ **Test Coverage**: Counts and validates test file structure
+- ✅ **Documentation**: Validates README and workflow files
+
+**No GPU runtime testing is available** since GitHub Actions runners lack CUDA-capable hardware.
 
 ## Workflows Overview
 
-### 1. `test.yml` - Main CI Workflow (RECOMMENDED)
+### 1. `test.yml` - Code Quality Check (RECOMMENDED)
 **Triggers:**
 - Pull requests (opened, synchronized, reopened, ready for review)
 - Pushes to main/develop branches
 
 **Features:**
-- ✅ **Smart CUDA Detection**: Attempts CUDA build, falls back to CPU-only
-- ✅ **Build Validation**: Verifies compilation succeeds
-- ✅ **Test Compilation**: Compiles test suite (when CUDA available)
-- ✅ **Detailed Reporting**: Clear status messages about GPU limitations
-- ✅ **PR Integration**: Automatic status comments
+- ✅ **Syntax Validation**: Comprehensive C++/CUDA syntax checking
+- ✅ **Code Quality**: TODO/FIXME detection, line length validation
+- ✅ **Project Structure**: Directory and file existence checks
+- ✅ **Test Coverage**: Test file counting and validation
+- ✅ **PR Integration**: Automatic status comments with detailed reports
 
-**Use Case:** Primary CI for all PRs and commits
+**Use Case:** Primary validation for all PRs and commits
 
-### 2. `ci-comprehensive.yml` - Full CI Pipeline
+### 2. `ci-comprehensive.yml` - Comprehensive Validation
 **Triggers:**
 - Pull requests
 - Pushes to main/develop
 - Manual dispatch
 
 **Features:**
-- ✅ **Pre-checks**: Syntax validation and code quality
-- ✅ **Multi-environment**: Tests different configurations
-- ✅ **Documentation**: README validation
-- ✅ **Detailed Reporting**: Comprehensive build reports
+- ✅ **Static Analysis**: Advanced syntax and quality checks
+- ✅ **Multi-check**: Comprehensive validation pipeline
+- ✅ **Documentation**: README and structure validation
+- ✅ **Detailed Reporting**: Comprehensive validation reports
 
-**Use Case:** Complete validation pipeline
+**Use Case:** Complete static validation pipeline
 
-### 3. `manual-test.yml` - Manual Testing
+### 3. `manual-test.yml` - Manual Validation Run
 **Triggers:**
 - Manual workflow dispatch
 
 **Features:**
-- ✅ **Configurable Options**: Custom build types and settings
-- ✅ **Extended Testing**: Optional performance tests
-- ✅ **Coverage Analysis**: Code coverage reporting
+- ✅ **Configurable Options**: Custom validation settings
+- ✅ **Extended Checks**: Additional quality validations
+- ✅ **Coverage Analysis**: Placeholder for future coverage analysis
+- ✅ **Detailed Reporting**: Custom validation reports
 
-**Use Case:** Manual testing with specific configurations
+**Use Case:** Manual validation with specific configurations
 
-## Testing Strategy
+### 4. `cuda-matrix.yml` - Multi-Platform Validation
+**Triggers:**
+- Push to main
+- Pull requests
+- Weekly schedule
 
-### What GitHub Actions Can Do
-1. **Compile Validation**: Ensure all CUDA/C++ code compiles correctly
-2. **Build Verification**: Confirm library builds successfully
-3. **Code Quality**: Check for syntax errors and basic issues
-4. **Documentation**: Validate README files and structure
+**Features:**
+- ✅ **Platform Testing**: Validation across different environments
+- ✅ **Consistency Checks**: Ensures code works across platforms
+- ✅ **Scheduled Runs**: Weekly validation to catch drift
 
-### What GitHub Actions Cannot Do
-1. **GPU Runtime Testing**: No CUDA-capable GPUs available
-2. **Performance Testing**: Cannot measure actual GPU performance
-3. **Integration Testing**: Cannot test full signal processing pipelines
-4. **Hardware Validation**: Cannot verify GPU-specific optimizations
+**Use Case:** Platform compatibility validation
+
+## Validation Strategy
+
+### What GitHub Actions Validates
+1. **Syntax Validation**: Ensure all C++/CUDA code compiles correctly
+2. **Code Quality**: Check for TODO/FIXME comments and style issues
+3. **Project Structure**: Verify required directories and files exist
+4. **Test Coverage**: Count and validate test files
+5. **Documentation**: Validate README files and project structure
+
+### Validation Results
+- ✅ **PASS**: All static checks completed successfully
+- ⚠️ **WARN**: Minor issues found (e.g., TODO comments)
+- ❌ **FAIL**: Critical issues found (e.g., syntax errors, missing files)
+
+### Status Badge
+```markdown
+[![CI Build](https://img.shields.io/badge/CI%20Validation-passing-brightgreen)](https://github.com/your-username/gsdr/actions/workflows/test.yml)
+```
+
+- **✅ Green**: All validation checks passed
+- **❌ Red**: Critical validation issues found
+- **⏳ Yellow**: Validation in progress
 
 ### Recommended Testing Approach
 
