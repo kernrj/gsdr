@@ -1,3 +1,6 @@
+<!--- status badge start -->
+[![Tests](https://img.shields.io/badge/tests-unknown-yellow)](https://github.com/kernrj/gsdr/actions/workflows/test.yml)
+<!--- status badge end -->
 # GSDR - GPU Software Defined Radio Library
 
 [![CI Build](https://img.shields.io/badge/CI%20Build-passing-brightgreen)](https://github.com/your-username/gsdr/actions/workflows/test.yml)
