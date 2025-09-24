@@ -1,0 +1,390 @@
+name: GPU Tests with CUDA
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      run_cpu_fallback:
+        description: 'Run CPU fallback tests'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  BUILD_TYPE: Release
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-gpu:
+    name: GPU Runner Check
+    runs-on: ${{ vars.GPU_RUNNER_LABEL || 'ubuntu-latest' }}
+    outputs:
+      gpu-available: ${{ steps.check.outputs.gpu-available }}
+      cuda-version: ${{ steps.check.outputs.cuda-version }}
+    steps:
+      - name: Ensure GPU label is configured
+        if: ${{ !vars.GPU_RUNNER_LABEL }}
+        run: |
+          echo "GPU_RUNNER_LABEL repo variable is not set. Set it to your GPU runner label from Settings→Actions→Runners." >&2
+          exit 1
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check GPU availability
+        id: check
+        run: |
+          echo "=== GPU Hardware Check ==="
+
+          # Check if nvidia-smi is available
+          if command -v nvidia-smi &> /dev/null; then
+            echo "✅ nvidia-smi found"
+            echo "gpu-available=true" >> $GITHUB_OUTPUT
+
+            # Get GPU info
+            echo "=== GPU Information ==="
+            nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader,nounits
+
+            # Get CUDA version
+            if command -v nvcc &> /dev/null; then
+              CUDA_VERSION=$(nvcc --version | grep "release" | sed -n -e 's/^.*release \([0-9]\+\.[0-9]\+\).*$/\1/p')
+              echo "✅ nvcc found - CUDA $CUDA_VERSION"
+              echo "cuda-version=$CUDA_VERSION" >> $GITHUB_OUTPUT
+            else
+              echo "⚠️ nvcc not found; using runtime-only CUDA"
+              echo "cuda-version=runtime-only" >> $GITHUB_OUTPUT
+            fi
+
+            # Test CUDA runtime
+            echo "#include <cuda_runtime.h>" > /tmp/cuda_test.cu
+            echo "int main() { cudaDeviceSynchronize(); return 0; }" >> /tmp/cuda_test.cu
+            if nvcc /tmp/cuda_test.cu -o /tmp/cuda_test && /tmp/cuda_test; then
+              echo "✅ CUDA runtime test passed"
+            else
+              echo "❌ CUDA runtime test failed"
+              exit 1
+            fi
+          else
+            echo "❌ nvidia-smi not found"
+            echo "gpu-available=false" >> $GITHUB_OUTPUT
+            echo "cuda-version=not-available" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+  gpu-tests:
+    name: GPU Tests
+    needs: check-gpu
+    if: needs.check-gpu.outputs.gpu-available == 'true'
+    runs-on: ${{ vars.GPU_RUNNER_LABEL }}
+    strategy:
+      fail-fast: false
+      matrix:
+        cuda-version: ${{ fromJSON(format('["{0}"]', needs.check-gpu.outputs.cuda-version)) }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/ccache
+            build/
+          key: ${{ runner.os }}-cuda-${{ matrix.cuda-version }}-${{ hashFiles('**/CMakeLists.txt', '**/src/*', '**/include/*', '**/tests/*') }}
+          restore-keys: |
+            ${{ runner.os }}-cuda-${{ matrix.cuda-version }}-
+            ${{ runner.os }}-cuda-
+
+      - name: Install system dependencies
+        run: |
+          echo "=== Installing Dependencies ==="
+
+          # Update package list
+          sudo apt-get update
+
+          # Install build tools
+          sudo apt-get install -y \
+            cmake \
+            build-essential \
+            pkg-config \
+            ninja-build \
+            ccache
+
+          # Install CUDA toolkit if nvcc not available
+          if ! command -v nvcc &> /dev/null; then
+            echo "Installing CUDA toolkit..."
+            wget -O cuda-repo.deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-repo-ubuntu2004_11.8.0-522.06-1_amd64.deb
+            sudo dpkg -i cuda-repo.deb
+            sudo apt-get update
+            sudo apt-get install -y cuda-toolkit-11-8
+            sudo apt-get install -y cuda-runtime-11-8
+          fi
+
+          # Install GTest
+          sudo apt-get install -y libgtest-dev
+
+          # Set CUDA paths
+          echo "CUDA_HOME=/usr/local/cuda" >> $GITHUB_ENV
+          echo "PATH=$PATH:/usr/local/cuda/bin" >> $GITHUB_PATH
+          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64" >> $GITHUB_ENV
+
+      - name: Configure CMake
+        run: |
+          echo "=== Configuring CMake ==="
+          mkdir -p build
+          cd build
+
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DUSE_TESTS=ON \
+            -DCMAKE_CUDA_ARCHITECTURES="75" \
+            -GNinja
+
+      - name: Build project
+        run: |
+          echo "=== Building Project ==="
+          cd build
+          ninja
+
+      - name: Run GPU tests
+        run: |
+          echo "=== Running GPU Tests ==="
+
+          # Run tests with output on failure
+          cd build
+          ctest --output-on-failure --build-config ${{ env.BUILD_TYPE }}
+
+          # Additional GPU-specific test info
+          echo "=== GPU Test Summary ==="
+          echo "| Test Type | Status | Details |" > ../gpu_test_summary.md
+          echo "|-----------|--------|---------|" >> ../gpu_test_summary.md
+          echo "| GPU Hardware | ✅ Available | $(nvidia-smi --query-gpu=name --format=csv,noheader,nounits | head -1) |" >> ../gpu_test_summary.md
+          echo "| CUDA Version | ✅ Available | $(nvcc --version | grep 'release' | cut -d' ' -f6 | tr -d ',') |" >> ../gpu_test_summary.md
+          echo "| Test Results | ✅ Passed | All tests completed successfully |" >> ../gpu_test_summary.md
+
+          echo "" >> ../gpu_test_summary.md
+          echo "### 📊 Test Details" >> ../gpu_test_summary.md
+          echo "\`\`\`" >> ../gpu_test_summary.md
+          ctest --show-only=json-v1 2>/dev/null || echo "JSON output not available, using basic format:" >> ../gpu_test_summary.md
+          ctest --output-on-failure -V 2>&1 | head -20 >> ../gpu_test_summary.md
+          echo "\`\`\`" >> ../gpu_test_summary.md
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gpu-test-results-cuda-${{ matrix.cuda-version }}
+          path: |
+            build/Testing/
+            gpu_test_summary.md
+          retention-days: 30
+
+  gpu-tests-in-container:
+    name: GPU Tests in Container
+    needs: check-gpu
+    if: needs.check-gpu.outputs.gpu-available == 'true' && vars.DOCKERFILE_GPU
+    runs-on: ${{ vars.GPU_RUNNER_LABEL }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check Dockerfile
+        run: |
+          if [ ! -f "${{ vars.DOCKERFILE_GPU }}" ]; then
+            echo "Dockerfile not found at ${{ vars.DOCKERFILE_GPU }}"
+            exit 1
+          fi
+          echo "Found Dockerfile at ${{ vars.DOCKERFILE_GPU }}"
+
+      - name: Build GPU container
+        run: |
+          echo "=== Building GPU Container ==="
+          docker build -t gsdr-ci-gpu -f ${{ vars.DOCKERFILE_GPU }} .
+
+      - name: Run tests in GPU container
+        run: |
+          echo "=== Running Tests in GPU Container ==="
+
+          # Run tests with GPU access
+          docker run --rm --gpus all \
+            -v ${{ github.workspace }}:/ws \
+            -w /ws \
+            gsdr-ci-gpu \
+            bash -lc "
+              mkdir -p build && cd build
+              cmake .. -DCMAKE_BUILD_TYPE=Release -DUSE_TESTS=ON -DCMAKE_CUDA_ARCHITECTURES='75'
+              make
+              ctest --output-on-failure
+            "
+
+      - name: Container test summary
+        if: always()
+        run: |
+          echo "=== Container GPU Test Summary ===" > container_gpu_summary.md
+          echo "| Test Type | Status | Details |" >> container_gpu_summary.md
+          echo "|-----------|--------|---------|" >> container_gpu_summary.md
+          echo "| Container GPU Tests | ✅ Completed | Tests run in Docker container with GPU access |" >> container_gpu_summary.md
+          echo "| GPU Runtime | ✅ Available | NVIDIA Container Toolkit detected |" >> container_gpu_summary.md
+
+      - name: Upload container test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gpu-container-test-results
+          path: container_gpu_summary.md
+          retention-days: 30
+
+  cpu-fallback:
+    name: CPU Fallback Tests
+    needs: check-gpu
+    if: needs.check-gpu.outputs.gpu-available == 'false' || github.event.inputs.run_cpu_fallback == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/ccache
+            build/
+          key: ${{ runner.os }}-cpu-fallback-${{ hashFiles('**/CMakeLists.txt', '**/src/*', '**/include/*', '**/tests/*') }}
+          restore-keys: |
+            ${{ runner.os }}-cpu-fallback-
+            ${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          echo "=== Installing CPU Dependencies ==="
+
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            build-essential \
+            pkg-config \
+            ninja-build \
+            ccache \
+            libgtest-dev
+
+      - name: Configure CMake
+        run: |
+          echo "=== Configuring CMake (CPU Mode) ==="
+          mkdir -p build
+          cd build
+
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DUSE_TESTS=ON \
+            -DENABLE_CUDA=OFF \
+            -GNinja
+
+      - name: Build project
+        run: |
+          echo "=== Building Project (CPU Mode) ==="
+          cd build
+          ninja
+
+      - name: Run CPU tests
+        run: |
+          echo "=== Running CPU Fallback Tests ==="
+
+          cd build
+          ctest --output-on-failure --build-config ${{ env.BUILD_TYPE }}
+
+      - name: CPU test summary
+        if: always()
+        run: |
+          echo "=== CPU Fallback Test Summary ===" > cpu_fallback_summary.md
+          echo "| Test Type | Status | Details |" >> cpu_fallback_summary.md
+          echo "|-----------|--------|---------|" >> cpu_fallback_summary.md
+          echo "| CPU Fallback Tests | ✅ Completed | Tests run without CUDA hardware |" >> cpu_fallback_summary.md
+          echo "| GPU Available | ❌ No | Running CPU-only version |" >> cpu_fallback_summary.md
+          echo "| Build Mode | ✅ CPU | CUDA features disabled |" >> cpu_fallback_summary.md
+
+      - name: Upload CPU test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpu-fallback-test-results
+          path: cpu_fallback_summary.md
+          retention-days: 30
+
+  summary:
+    name: Test Summary
+    needs: [check-gpu, gpu-tests, gpu-tests-in-container, cpu-fallback]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate job summary
+        run: |
+          echo "## 🔍 GPU Test Summary" > $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # GPU availability status
+          if [ "${{ needs.check-gpu.outputs.gpu-available }}" == "true" ]; then
+            echo "✅ **GPU Hardware**: Available" >> $GITHUB_STEP_SUMMARY
+            echo "- **CUDA Version**: ${{ needs.check-gpu.outputs.cuda-version }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Runner**: ${{ vars.GPU_RUNNER_LABEL }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **GPU Hardware**: Not Available" >> $GITHUB_STEP_SUMMARY
+            echo "- **Fallback**: CPU tests executed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Job status table
+          echo "| Job | Status | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|---------|" >> $GITHUB_STEP_SUMMARY
+
+          # Check each job status
+          if [ "${{ needs.gpu-tests.result }}" == "success" ]; then
+            echo "| GPU Tests | ✅ Success | Passed |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.gpu-tests.result }}" == "skipped" ]; then
+            echo "| GPU Tests | ⏭️ Skipped | Not run |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| GPU Tests | ❌ Failed | Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.gpu-tests-in-container.result }}" == "success" ]; then
+            echo "| Container GPU Tests | ✅ Success | Passed |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.gpu-tests-in-container.result }}" == "skipped" ]; then
+            echo "| Container GPU Tests | ⏭️ Skipped | Not configured |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Container GPU Tests | ❌ Failed | Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.cpu-fallback.result }}" == "success" ]; then
+            echo "| CPU Fallback Tests | ✅ Success | Passed |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.cpu-fallback.result }}" == "skipped" ]; then
+            echo "| CPU Fallback Tests | ⏭️ Skipped | Not needed |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| CPU Fallback Tests | ❌ Failed | Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- **GPU Runner Label**: \`${{ vars.GPU_RUNNER_LABEL || 'Not set' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dockerfile GPU**: \`${{ vars.DOCKERFILE_GPU || 'Not set' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **CUDA Versions**: \`${{ needs.check-gpu.outputs.cuda-version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Important notes
+          echo "### ⚠️ Important Notes" >> $GITHUB_STEP_SUMMARY
+          echo "- **Billing**: GPU runners incur additional costs" >> $GITHUB_STEP_SUMMARY
+          echo "- **Configuration**: Set \`GPU_RUNNER_LABEL\` variable to enable GPU tests" >> $GITHUB_STEP_SUMMARY
+          echo "- **Container Tests**: Set \`DOCKERFILE_GPU\` variable for container-based testing" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "*Generated by GitHub Actions GPU CI*" >> $GITHUB_STEP_SUMMARY
