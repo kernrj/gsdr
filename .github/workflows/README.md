@@ -210,11 +210,21 @@ To run actual GPU tests:
 ### AWS CodeBuild Setup
 For GPU testing workflows to work, you need:
 
-1. **AWS IAM Role**: Create an IAM role with CodeBuild permissions
-2. **CodeBuild Project**: GPU-enabled project with appropriate instance types
-3. **GitHub Secret**: Add `AWS_CODEBUILD_ROLE_ARN` to repository secrets
+1. **AWS Credentials**: Choose one of the authentication methods below
+2. **CodeBuild Project**: GPU-enabled project named "gsdr" with appropriate instance types
 
-#### Required IAM Permissions
+#### Authentication Methods
+
+**Option 1: AWS Access Keys (Recommended)**
+Add these secrets to your GitHub repository:
+- `AWS_ACCESS_KEY_ID`: Your AWS access key ID
+- `AWS_SECRET_ACCESS_KEY`: Your AWS secret access key
+
+**Option 2: AWS Role ARN**
+Add this secret to your GitHub repository:
+- `AWS_CODEBUILD_ROLE_ARN`: ARN of an IAM role with CodeBuild permissions
+
+#### Required IAM Permissions (for Role ARN method)
 ```json
 {
   "Version": "2012-10-17",
@@ -232,6 +242,32 @@ For GPU testing workflows to work, you need:
   ]
 }
 ```
+
+#### Required IAM Permissions (for Access Keys method)
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "codebuild:StartBuild",
+        "codebuild:BatchGetBuilds",
+        "logs:GetLogEvents",
+        "logs:DescribeLogStreams",
+        "sts:GetCallerIdentity"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+#### Debug Mode
+To enable debug mode and see detailed AWS configuration information:
+1. Go to your repository Settings → Variables and secrets → Variables
+2. Add a new variable: `DEBUG_AWS_CONFIG` with value `true`
+3. This will show credential configuration details in the workflow logs
 
 ## Security
 

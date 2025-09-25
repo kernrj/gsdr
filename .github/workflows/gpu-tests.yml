@@ -9,9 +9,12 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  CODEBUILD_PROJECT_NAME: gsdr-gpu-tests
+  CODEBUILD_PROJECT_NAME: gsdr
   BUILD_TYPE: Release
   CUDA_ARCH: 75
+  # AWS Credentials - Configure one method below
+  USE_AWS_ACCESS_KEYS: ${{ secrets.AWS_ACCESS_KEY_ID != '' }}
+  USE_AWS_ROLE_ARN: ${{ secrets.AWS_CODEBUILD_ROLE_ARN != '' }}
 
 jobs:
   gpu-tests:
@@ -22,12 +25,66 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Configure AWS credentials
+    - name: Validate AWS credentials configuration
+      run: |
+        echo "🔍 Validating AWS credentials configuration..."
+
+        if [ "${{ env.USE_AWS_ACCESS_KEYS }}" == "true" ]; then
+          echo "✅ Using AWS Access Keys method"
+          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ] || [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            echo "❌ AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY secrets are required"
+            exit 1
+          fi
+        elif [ "${{ env.USE_AWS_ROLE_ARN }}" == "true" ]; then
+          echo "✅ Using AWS Role ARN method"
+          if [ -z "${{ secrets.AWS_CODEBUILD_ROLE_ARN }}" ]; then
+            echo "❌ AWS_CODEBUILD_ROLE_ARN secret is required"
+            exit 1
+          fi
+        else
+          echo "❌ No valid AWS credential method configured"
+          echo "Please configure either:"
+          echo "  1. AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY secrets, OR"
+          echo "  2. AWS_CODEBUILD_ROLE_ARN secret"
+          exit 1
+        fi
+
+        echo "✅ AWS credentials configuration is valid"
+
+    - name: Debug AWS configuration (optional)
+      if: vars.DEBUG_AWS_CONFIG == 'true'
+      run: |
+        echo "🔍 Debug AWS configuration..."
+        echo "AWS_REGION: ${{ env.AWS_REGION }}"
+        echo "CODEBUILD_PROJECT_NAME: ${{ env.CODEBUILD_PROJECT_NAME }}"
+        echo "USE_AWS_ACCESS_KEYS: ${{ env.USE_AWS_ACCESS_KEYS }}"
+        echo "USE_AWS_ROLE_ARN: ${{ env.USE_AWS_ROLE_ARN }}"
+        echo "Available secrets:"
+        if [ "${{ env.USE_AWS_ACCESS_KEYS }}" == "true" ]; then
+          echo "  - AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID != '' }}"
+          echo "  - AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY != '' }}"
+        fi
+        if [ "${{ env.USE_AWS_ROLE_ARN }}" == "true" ]; then
+          echo "  - AWS_CODEBUILD_ROLE_ARN: ${{ secrets.AWS_CODEBUILD_ROLE_ARN != '' }}"
+        fi
+        echo "✅ Debug information displayed"
+
+    - name: Configure AWS credentials (Access Keys)
+      if: env.USE_AWS_ACCESS_KEYS == 'true'
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Configure AWS credentials (Role ARN)
+      if: env.USE_AWS_ROLE_ARN == 'true'
       uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: ${{ secrets.AWS_CODEBUILD_ROLE_ARN }}
         role-session-name: GitHub-Actions-CodeBuild-Session
         aws-region: ${{ env.AWS_REGION }}
+        audience: sts.amazonaws.com
 
     - name: Run GPU Tests with AWS CodeBuild
       uses: aws-actions/aws-codebuild-run-build@v1
