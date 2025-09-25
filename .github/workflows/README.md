@@ -69,6 +69,32 @@ This directory contains GitHub Actions workflows for the GSDR project. These wor
 
 **Use Case:** Platform compatibility validation
 
+### 5. `gpu-tests.yml` - AWS CodeBuild GPU Testing
+**Triggers:**
+- Push to main/develop branches
+- Pull requests to main/develop
+
+**Features:**
+- 🚀 **AWS CodeBuild Integration**: Runs on GPU-enabled CodeBuild instances
+- 🚀 **Full CUDA Testing**: Complete build and test execution with GPU hardware
+- 🚀 **Comprehensive Reporting**: Detailed test results and environment information
+- 🚀 **PR Status Updates**: Automatic status checks for pull requests
+
+**Use Case:** Full GPU runtime testing with actual CUDA hardware
+
+### 6. `gpu-tests-simple.yml` - Simple GPU Testing
+**Triggers:**
+- Push to main/develop branches
+- Pull requests to main/develop
+- Manual dispatch
+
+**Features:**
+- 🚀 **AWS CodeBuild Integration**: Uses pre-configured CodeBuild project
+- 🚀 **Streamlined**: Minimal configuration, uses existing build setup
+- 🚀 **Quick Results**: Fast execution for existing CodeBuild projects
+
+**Use Case:** GPU testing with pre-configured AWS CodeBuild project
+
 ## Validation Strategy
 
 ### What GitHub Actions Validates
@@ -173,11 +199,39 @@ To run actual GPU tests:
 ### Environment Variables
 - `BUILD_TYPE`: Release (default) or Debug
 - `CUDA_ARCH`: Target GPU architecture (75 for CUDA 11.8, 80 for 12.0)
+- `AWS_REGION`: AWS region for CodeBuild (default: us-east-1)
+- `CODEBUILD_PROJECT_NAME`: Name of the AWS CodeBuild project
 
 ### Build Options
 - **Standard Build**: Compiles library and basic tests
 - **Test Build**: Includes comprehensive test suite
 - **Coverage Build**: Adds code coverage analysis
+
+### AWS CodeBuild Setup
+For GPU testing workflows to work, you need:
+
+1. **AWS IAM Role**: Create an IAM role with CodeBuild permissions
+2. **CodeBuild Project**: GPU-enabled project with appropriate instance types
+3. **GitHub Secret**: Add `AWS_CODEBUILD_ROLE_ARN` to repository secrets
+
+#### Required IAM Permissions
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "codebuild:StartBuild",
+        "codebuild:BatchGetBuilds",
+        "logs:GetLogEvents",
+        "logs:DescribeLogStreams"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
 
 ## Security
 
