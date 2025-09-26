@@ -69,6 +69,32 @@ This directory contains GitHub Actions workflows for the GSDR project. These wor
 
 **Use Case:** Platform compatibility validation
 
+### 5. `gpu-tests.yml` - AWS CodeBuild GPU Testing
+**Triggers:**
+- Push to main/develop branches
+- Pull requests to main/develop
+
+**Features:**
+- 🚀 **AWS CodeBuild Integration**: Runs on GPU-enabled CodeBuild instances
+- 🚀 **Full CUDA Testing**: Complete build and test execution with GPU hardware
+- 🚀 **Comprehensive Reporting**: Detailed test results and environment information
+- 🚀 **PR Status Updates**: Automatic status checks for pull requests
+
+**Use Case:** Full GPU runtime testing with actual CUDA hardware
+
+### 6. `gpu-tests-simple.yml` - Simple GPU Testing
+**Triggers:**
+- Push to main/develop branches
+- Pull requests to main/develop
+- Manual dispatch
+
+**Features:**
+- 🚀 **AWS CodeBuild Integration**: Uses pre-configured CodeBuild project
+- 🚀 **Streamlined**: Minimal configuration, uses existing build setup
+- 🚀 **Quick Results**: Fast execution for existing CodeBuild projects
+
+**Use Case:** GPU testing with pre-configured AWS CodeBuild project
+
 ## Validation Strategy
 
 ### What GitHub Actions Validates
@@ -173,11 +199,47 @@ To run actual GPU tests:
 ### Environment Variables
 - `BUILD_TYPE`: Release (default) or Debug
 - `CUDA_ARCH`: Target GPU architecture (75 for CUDA 11.8, 80 for 12.0)
+- `AWS_REGION`: AWS region for CodeBuild (default: us-east-1)
+- `CODEBUILD_PROJECT_NAME`: Name of the AWS CodeBuild project (gsdr)
 
 ### Build Options
 - **Standard Build**: Compiles library and basic tests
 - **Test Build**: Includes comprehensive test suite
 - **Coverage Build**: Adds code coverage analysis
+
+### CodeBuild Project Customization
+You can customize the GPU testing by modifying these workflow variables:
+- Change `AWS_REGION` to your preferred region
+- Update `CUDA_ARCH` to match your target GPU architecture
+- Modify `BUILD_TYPE` for Debug or Release builds
+
+### AWS CodeBuild Setup
+For GPU testing workflows to work, you need:
+
+1. **GitHub-AWS Connection**: Already configured (as mentioned)
+2. **CodeBuild Project**: GPU-enabled project named "gsdr"
+
+#### CodeBuild Project Configuration for GPU Testing
+
+To use GPU instances in your CodeBuild project:
+
+1. **Open AWS CodeBuild Console**
+2. **Select your project** (named "gsdr")
+3. **Edit the project configuration**:
+   - **Environment**: Choose a GPU-supported compute type
+   - **Image**: Select an image that supports CUDA (e.g., `aws/codebuild/amazonlinux2-x86_64-standard:4.0` or later)
+
+#### Recommended GPU Instance Types
+- **General Purpose**: `p3.2xlarge`, `p3.8xlarge` (Tesla V100 GPUs)
+- **Compute Optimized**: `p4d.24xlarge` (A100 GPUs)
+- **Cost Effective**: `p3.2xlarge` is usually sufficient for most testing
+
+#### Environment Variables
+The workflows use these environment variables (already configured):
+- `AWS_REGION`: us-east-1
+- `CODEBUILD_PROJECT_NAME`: gsdr
+- `BUILD_TYPE`: Release
+- `CUDA_ARCH`: 75
 
 ## Security
 

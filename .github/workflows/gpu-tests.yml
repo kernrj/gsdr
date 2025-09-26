@@ -1,0 +1,191 @@
+name: GPU Tests with AWS CodeBuild
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+    types: [ opened, synchronize, reopened, ready_for_review ]
+
+env:
+  AWS_REGION: us-east-1
+  CODEBUILD_PROJECT_NAME: gsdr
+  BUILD_TYPE: Release
+  CUDA_ARCH: 75
+
+jobs:
+  gpu-tests:
+    name: Run GPU Tests on AWS CodeBuild
+    runs-on: codebuild-gsdr-${{ github.run_id }}-${{ github.run_attempt }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Run GPU Tests with AWS CodeBuild
+      uses: aws-actions/aws-codebuild-run-build@v1
+      with:
+        project-name: ${{ env.CODEBUILD_PROJECT_NAME }}
+        buildspec-override: |
+          version: 0.2
+          phases:
+            install:
+              runtime-versions:
+                nodejs: 18
+                python: 3.11
+              commands:
+                - echo "Installing dependencies for GPU testing..."
+                - yum update -y
+                - yum install -y git cmake gcc gcc-c++ make
+                - yum install -y wget tar gzip
+                - echo "Installing CUDA Toolkit..."
+                - wget https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/cuda-repo-rhel7-11.8.0-1.x86_64.rpm
+                - rpm -i cuda-repo-rhel7-11.8.0-1.x86_64.rpm
+                - yum clean all
+                - yum install -y cuda-toolkit-11-8
+                - echo "Installing Google Test..."
+                - git clone https://github.com/google/googletest.git
+                - cd googletest && mkdir build && cd build
+                - cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
+                - make -j$(nproc) && make install
+                - cd ../../
+            pre_build:
+              commands:
+                - echo "Setting up build environment..."
+                - export PATH=/usr/local/cuda/bin:$PATH
+                - export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+                - export CUDA_HOME=/usr/local/cuda
+                - nvcc --version
+                - echo "Build environment ready"
+            build:
+              commands:
+                - echo "Building GSDR library and tests..."
+                - mkdir build && cd build
+                - cmake .. -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DUSE_TESTS=ON -DCUDA_ARCH=${{ env.CUDA_ARCH }}
+                - make -j$(nproc)
+                - echo "Build completed successfully"
+            post_build:
+              commands:
+                - echo "Running GPU tests..."
+                - cd build
+                - ctest --output-on-failure --build-config ${{ env.BUILD_TYPE }} -V
+                - echo "GPU tests completed"
+          artifacts:
+            files:
+              - '**/*'
+            name: gpu-test-results
+            paths:
+              - build/tests/
+              - build/Testing/
+        env-vars-for-build:
+          BUILD_TYPE: ${{ env.BUILD_TYPE }}
+          CUDA_ARCH: ${{ env.CUDA_ARCH }}
+          GITHUB_REPO: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF: ${{ github.ref }}
+
+    - name: Generate test report
+      if: always()
+      run: |
+        echo "## 🚀 GSDR GPU Test Results" > gpu_test_report.md
+        echo "" >> gpu_test_report.md
+        echo "| Test Run | Status | Details |" >> gpu_test_report.md
+        echo "|----------|--------|---------|" >> gpu_test_report.md
+
+        # Extract test results from CodeBuild logs
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "| GPU Tests | ✅ PASSED | All tests completed successfully on GPU hardware |" >> gpu_test_report.md
+        else
+          echo "| GPU Tests | ❌ FAILED | Test failures detected - check CodeBuild logs |" >> gpu_test_report.md
+        fi
+
+        echo "" >> gpu_test_report.md
+        echo "### 📋 Test Environment" >> gpu_test_report.md
+        echo "- **Platform**: AWS CodeBuild GPU instance" >> gpu_test_report.md
+        echo "- **CUDA Version**: 11.8" >> gpu_test_report.md
+        echo "- **Architecture**: ${{ env.CUDA_ARCH }}" >> gpu_test_report.md
+        echo "- **Build Type**: ${{ env.BUILD_TYPE }}" >> gpu_test_report.md
+        echo "- **Commit**: ${{ github.sha }}" >> gpu_test_report.md
+        echo "- **Branch**: ${{ github.ref }}" >> gpu_test_report.md
+        echo "" >> gpu_test_report.md
+        echo "### 🔍 Build Information" >> gpu_test_report.md
+        echo "- **Repository**: ${{ github.repository }}" >> gpu_test_report.md
+        echo "- **CodeBuild Project**: ${{ env.CODEBUILD_PROJECT_NAME }}" >> gpu_test_report.md
+        echo "- **AWS Region**: ${{ env.AWS_REGION }}" >> gpu_test_report.md
+        echo "" >> gpu_test_report.md
+        echo "### 📝 Next Steps" >> gpu_test_report.md
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "- ✅ All GPU tests passed successfully" >> gpu_test_report.md
+          echo "- 🎉 Ready for deployment" >> gpu_test_report.md
+        else
+          echo "- ❌ Review CodeBuild logs for detailed error information" >> gpu_test_report.md
+          echo "- 🔧 Fix failing tests before merging" >> gpu_test_report.md
+        fi
+        echo "" >> gpu_test_report.md
+        echo "---" >> gpu_test_report.md
+        echo "*Generated by GitHub Actions + AWS CodeBuild*" >> gpu_test_report.md
+
+    - name: Comment PR with GPU test results
+      if: github.event_name == 'pull_request' && always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const path = 'gpu_test_report.md';
+
+          if (fs.existsSync(path)) {
+            const report = fs.readFileSync(path, 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+          } else {
+            const fallbackComment = `## 🚀 GSDR GPU Test Results
+
+| Test Run | Status | Details |
+|----------|--------|---------|
+| GPU Tests | ${{ job.status == 'success' ? '✅ PASSED' : '❌ FAILED' }} | ${{ job.status == 'success' ? 'All tests completed successfully on GPU hardware' : 'Test failures detected - check CodeBuild logs' }} |
+
+### 📋 Test Environment
+- **Platform**: AWS CodeBuild GPU instance
+- **CUDA Version**: 11.8
+- **Architecture**: ${{ env.CUDA_ARCH }}
+- **Build Type**: ${{ env.BUILD_TYPE }}
+- **Commit**: ${{ github.sha }}
+- **Branch**: ${{ github.ref }}
+
+### 📝 Next Steps
+${{ job.status == 'success' ? '- ✅ All GPU tests passed successfully\n- 🎉 Ready for deployment' : '- ❌ Review CodeBuild logs for detailed error information\n- 🔧 Fix failing tests before merging' }}
+
+---
+*Generated by GitHub Actions + AWS CodeBuild*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: fallbackComment
+            });
+          }
+
+    - name: Update PR status check
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const status = '${{ job.status }}' === 'success' ? 'success' : 'failure';
+          const description = '${{ job.status }}' === 'success'
+            ? 'GPU tests passed on AWS CodeBuild'
+            : 'GPU tests failed on AWS CodeBuild';
+
+          github.rest.repos.createCommitStatus({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            sha: context.sha,
+            state: status,
+            target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            description: description,
+            context: 'GPU Tests'
+          });
