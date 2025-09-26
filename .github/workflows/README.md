@@ -200,74 +200,46 @@ To run actual GPU tests:
 - `BUILD_TYPE`: Release (default) or Debug
 - `CUDA_ARCH`: Target GPU architecture (75 for CUDA 11.8, 80 for 12.0)
 - `AWS_REGION`: AWS region for CodeBuild (default: us-east-1)
-- `CODEBUILD_PROJECT_NAME`: Name of the AWS CodeBuild project
+- `CODEBUILD_PROJECT_NAME`: Name of the AWS CodeBuild project (gsdr)
 
 ### Build Options
 - **Standard Build**: Compiles library and basic tests
 - **Test Build**: Includes comprehensive test suite
 - **Coverage Build**: Adds code coverage analysis
 
+### CodeBuild Project Customization
+You can customize the GPU testing by modifying these workflow variables:
+- Change `AWS_REGION` to your preferred region
+- Update `CUDA_ARCH` to match your target GPU architecture
+- Modify `BUILD_TYPE` for Debug or Release builds
+
 ### AWS CodeBuild Setup
 For GPU testing workflows to work, you need:
 
-1. **AWS Credentials**: Choose one of the authentication methods below
-2. **CodeBuild Project**: GPU-enabled project named "gsdr" with appropriate instance types
+1. **GitHub-AWS Connection**: Already configured (as mentioned)
+2. **CodeBuild Project**: GPU-enabled project named "gsdr"
 
-#### Authentication Methods
+#### CodeBuild Project Configuration for GPU Testing
 
-**Option 1: AWS Access Keys (Recommended)**
-Add these secrets to your GitHub repository:
-- `AWS_ACCESS_KEY_ID`: Your AWS access key ID
-- `AWS_SECRET_ACCESS_KEY`: Your AWS secret access key
+To use GPU instances in your CodeBuild project:
 
-**Option 2: AWS Role ARN**
-Add this secret to your GitHub repository:
-- `AWS_CODEBUILD_ROLE_ARN`: ARN of an IAM role with CodeBuild permissions
+1. **Open AWS CodeBuild Console**
+2. **Select your project** (named "gsdr")
+3. **Edit the project configuration**:
+   - **Environment**: Choose a GPU-supported compute type
+   - **Image**: Select an image that supports CUDA (e.g., `aws/codebuild/amazonlinux2-x86_64-standard:4.0` or later)
 
-#### Required IAM Permissions (for Role ARN method)
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "codebuild:StartBuild",
-        "codebuild:BatchGetBuilds",
-        "logs:GetLogEvents",
-        "logs:DescribeLogStreams"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
-```
+#### Recommended GPU Instance Types
+- **General Purpose**: `p3.2xlarge`, `p3.8xlarge` (Tesla V100 GPUs)
+- **Compute Optimized**: `p4d.24xlarge` (A100 GPUs)
+- **Cost Effective**: `p3.2xlarge` is usually sufficient for most testing
 
-#### Required IAM Permissions (for Access Keys method)
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "codebuild:StartBuild",
-        "codebuild:BatchGetBuilds",
-        "logs:GetLogEvents",
-        "logs:DescribeLogStreams",
-        "sts:GetCallerIdentity"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
-```
-
-#### Debug Mode
-To enable debug mode and see detailed AWS configuration information:
-1. Go to your repository Settings → Variables and secrets → Variables
-2. Add a new variable: `DEBUG_AWS_CONFIG` with value `true`
-3. This will show credential configuration details in the workflow logs
+#### Environment Variables
+The workflows use these environment variables (already configured):
+- `AWS_REGION`: us-east-1
+- `CODEBUILD_PROJECT_NAME`: gsdr
+- `BUILD_TYPE`: Release
+- `CUDA_ARCH`: 75
 
 ## Security
 
