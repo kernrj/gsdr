@@ -15,7 +15,7 @@ env:
 jobs:
   gpu-tests:
     name: Run GPU Tests
-    runs-on: ubuntu-latest
+    runs-on: codebuild-gsdr-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
     - name: Checkout repository
